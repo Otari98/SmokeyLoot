@@ -430,8 +430,8 @@ local function IsOfficer(name)
 		local _, myRank = GetGuildInfo("player")
 		return OfficerRanks[myRank]
 	else
-		if SMOKEYLOOT.GUILD[k] and SMOKEYLOOT.GUILD[k].rankName then
-			return OfficerRanks[SMOKEYLOOT.GUILD[k].rankName]
+		if SMOKEYLOOT.GUILD[name] and SMOKEYLOOT.GUILD[name].rankName then
+			return OfficerRanks[SMOKEYLOOT.GUILD[name].rankName]
 		end
 	end
 end
@@ -1596,8 +1596,8 @@ end
 
 function SmokeyLoot_GetRemoteVersion()
 	GuildRoster()
-	local _, _, v = strfind(GetGuildInfoText(), "\n%a*(%d+)$")
-	return tonumber(v)
+	local _, _, n, v = strfind(GetGuildInfoText(), "\n(%a*)(%d+)$")
+	return tonumber(v), date("%d/%m/%y %H:%M:%S", v), n
 end
 
 function SmokeyLoot_SetRemoteVersion()
