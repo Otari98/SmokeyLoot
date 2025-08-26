@@ -1,0 +1,917 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.blizzard.com/wow/ui/..\FrameXML\UI.xsd">
+	<Script file="SmokeyLoot.lua"/>
+	<!-- Main Frame -->
+	<Frame name="SmokeyLootFrame" movable="true" parent="UIParent" enableMouse="true" toplevel="true" frameStrata="DIALOG" hidden="true">
+		<Size x="500" y="650"/>
+		<Anchors>
+			<Anchor point="CENTER"/>
+		</Anchors>
+		<Backdrop bgFile="Interface\Tooltips\UI-Tooltip-Background" edgeFile="Interface\Tooltips\UI-Tooltip-Border" tile="true">
+			<TileSize val="32"/>
+			<EdgeSize val="16"/>
+			<BackgroundInsets left="5" right="5" top="5" bottom="5"/>
+		</Backdrop>
+		<Layers>
+			<Layer level="ARTWORK">
+				<FontString name="SmokeyLootFrameDBDate" inherits="ChatFontNormal" justifyH="LEFT">
+					<Anchors>
+						<Anchor point="TOPLEFT">
+							<Offset x="24" y="-20"/>
+						</Anchor>
+					</Anchors>
+				</FontString>
+				<FontString name="SmokeyLootFrameStatus" inherits="GameFontNormal" justifyH="LEFT" text="Latest">
+					<Anchors>
+						<Anchor point="TOPRIGHT">
+							<Offset x="-90" y="-20"/>
+						</Anchor>
+					</Anchors>
+				</FontString>
+			</Layer>
+		</Layers>
+		<Frames>
+			<StatusBar name="SmokeyLootFrameProgressBar" drawLayer="BACKGROUND" minValue="0" maxValue="60000" defaultValue="0" hidden="true">
+				<Size x="120" y="10"/>
+				<Anchors>
+					<Anchor point="LEFT" relativeTo="SmokeyLootFrameDBDate" relativePoint="RIGHT">
+						<Offset x="12" y="0"/>
+					</Anchor>
+				</Anchors>
+				<Layers>
+					<Layer level="BORDER">
+						<Texture file="Interface\Tooltips\UI-StatusBar-Border">
+							<Size x="128" y="16"/>
+							<Anchors>
+								<Anchor point="TOPLEFT">
+									<Offset x="-4" y="4"/>
+								</Anchor>
+							</Anchors>
+						</Texture>
+					</Layer>
+					<Layer level="ARTWORK">
+						<FontString name="SmokeyLootFrameProgressBarText" inherits="GameFontHighlightSmallOutline" text="99%">
+							<Anchors>
+								<Anchor point="CENTER"/>
+							</Anchors>
+						</FontString>
+					</Layer>
+				</Layers>
+				<BarTexture name="$parentBar" file="Interface\TargetingFrame\UI-StatusBar"/>
+				<BarColor r="0.1" g="1" b="0.1"/>
+			</StatusBar>
+			<Button name="$parentCloseButton" inherits="UIPanelCloseButton">
+				<Anchors>
+					<Anchor point="TOPRIGHT" relativePoint="TOPRIGHT"/>
+				</Anchors>
+			</Button>
+			<ScrollFrame name="SmokeyLootScrollFrame" inherits="FauxScrollFrameTemplate">
+				<Size x="450" y="512"/>
+				<Anchors>
+					<Anchor point="TOPRIGHT" relativeTo="SmokeyLootFrame" relativePoint="TOPRIGHT">
+						<Offset x="-32" y="-46"/>
+					</Anchor>
+				</Anchors>
+				<!-- <Backdrop bgFile="Interface\Tooltips\UI-Tooltip-Background" tile="true">
+					<TileSize val="32"/>
+				</Backdrop> -->
+				<Scripts>
+					<OnVerticalScroll>
+						FauxScrollFrame_OnVerticalScroll(16, SmokeyLootFrame_Update)
+					</OnVerticalScroll>
+					<OnShow>
+						SmokeyLootFrame_Update()
+					</OnShow>
+				</Scripts>
+			</ScrollFrame>
+			<EditBox name="SmokeyLootFrameSearchBox" inherits="InputBoxTemplate" letters="200">
+				<Size x="120" y="32" />
+				<Anchors>
+					<Anchor point="BOTTOMRIGHT">
+						<Offset x="-30" y="12"/>
+					</Anchor>
+				</Anchors>
+				<Frames>
+					<Frame>
+						<Size x="14" y="14"/>
+						<Anchors>
+							<Anchor point="LEFT" relativeTo="$parent">
+								<Offset x="1" y="-2" />
+							</Anchor>
+						</Anchors>
+						<Backdrop bgFile="Interface\AddOns\SmokeyLoot\Textures\UI-SearchBox-Icon">
+							<Color r="1.0" g="1.0" b="1.0" a="0.6"/>
+						</Backdrop>
+					</Frame>
+					<Button>
+						<Size x="14" y="14" />
+						<Anchors>
+							<Anchor point="RIGHT" relativeTo="$parent">
+								<Offset x="-3" y="0" />
+							</Anchor>
+						</Anchors>
+						<Backdrop bgFile="Interface\AddOns\SmokeyLoot\Textures\UI-SearchBox-Clear">
+							<Color r="1.0" g="1.0" b="1.0" a="0.6"/>
+						</Backdrop>
+						<Scripts>
+							<OnClick>
+								this:GetParent():SetText("")
+								this:GetParent():ClearFocus()
+							</OnClick>
+							<OnEnter>
+								GameTooltip:SetOwner(this, "ANCHOR_TOPRIGHT", 0, 0)
+								GameTooltip:SetText("Clear")
+								GameTooltip:Show()
+								this:SetBackdropColor(1.0, 1.0, 1.0, 1.0)
+							</OnEnter>
+							<OnLeave>
+								GameTooltip:Hide()
+								this:SetBackdropColor(1.0, 1.0, 1.0, 0.6)
+							</OnLeave>
+						</Scripts>
+					</Button>
+				</Frames>
+				<Scripts>
+					<OnLoad>
+						this:SetAutoFocus(false)
+						this:SetTextInsets(15, 8, 0, 0)
+					</OnLoad>
+					<OnEnterPressed>
+						this:ClearFocus()
+						SmokeyLoot_Search()
+					</OnEnterPressed>
+					<OnTextChanged>
+						SmokeyLoot_Search()
+					</OnTextChanged>
+					<OnEscapePressed>
+						this:ClearFocus()
+						SmokeyLoot_Search()
+					</OnEscapePressed>
+				</Scripts>
+				<FontString name="$parentSearchString" inherits="GameFontNormal"/>
+			</EditBox>
+			<Button name="SmokeyLootImportButton" hidden="true" inherits="UIPanelButtonTemplate" text="Import SR">
+				<Size x="90" y="22"/>
+				<Anchors>
+					<Anchor point="BOTTOMLEFT">
+						<Offset x="24" y="18"/>
+					</Anchor>
+				</Anchors>
+				<Scripts>
+					<OnClick>
+						SmokeyLootImportFrame:Show()
+					</OnClick>
+				</Scripts>
+			</Button>
+			<Button name="SmokeyLootFinishRaidButton" hidden="true" inherits="UIPanelButtonTemplate" text="Finish raid">
+				<Size x="90" y="22"/>
+				<Anchors>
+					<Anchor point="LEFT" relativeTo="SmokeyLootImportButton" relativePoint="RIGHT">
+						<Offset x="2" y="0"/>
+					</Anchor>
+				</Anchors>
+				<Scripts>
+					<OnLoad>
+						this:Disable()
+					</OnLoad>
+					<OnClick>
+						SmokeyLootFinishRaidButton_OnClick()
+					</OnClick>
+				</Scripts>
+			</Button>
+			<Button name="SmokeyLootClearButton" inherits="UIPanelButtonTemplate" text="Clear" hidden="true">
+				<Size x="80" y="22"/>
+				<Anchors>
+					<Anchor point="LEFT" relativeTo="SmokeyLootFinishRaidButton" relativePoint="RIGHT">
+						<Offset x="2" y="0"/>
+					</Anchor>
+				</Anchors>
+				<Scripts>
+					<OnLoad>
+						this:Disable()
+					</OnLoad>
+					<OnShow>
+						SmokeyLoot_EnableRaidControls()
+					</OnShow>
+					<OnClick>
+						SmokeyLootClearButton_OnClick()
+					</OnClick>
+				</Scripts>
+			</Button>
+			<Button name="SmokeyLootAddButton" inherits="UIPanelButtonTemplate" text="Add">
+				<Size x="80" y="22"/>
+				<Anchors>
+					<Anchor point="TOP" relativeTo="SmokeyLootScrollFrame" relativePoint="BOTTOM">
+						<Offset x="5" y="-8"/>
+					</Anchor>
+				</Anchors>
+				<Scripts>
+					<OnLoad>
+						this:Disable()
+					</OnLoad>
+					<OnShow>
+						SmokeyLootAddButton_OnShow()
+					</OnShow>
+					<OnClick>
+						SmokeyLootAddButton_OnClick()
+					</OnClick>
+				</Scripts>
+			</Button>
+			<Button name="SmokeyLootVersionCheckButton" inherits="UIPanelButtonTemplate" text="Update">
+				<Size x="100" y="22"/>
+				<Anchors>
+					<Anchor point="LEFT" relativeTo="SmokeyLootFrameDBDate" relativePoint="RIGHT">
+						<Offset x="12" y="0"/>
+					</Anchor>
+				</Anchors>
+				<Scripts>
+					<OnClick>
+						SmokeyLoot_Pull()
+					</OnClick>
+				</Scripts>
+			</Button>
+			<Button name="SmokeyLootFrameTab1" inherits="CharacterFrameTabButtonTemplate" id="1" text="Database">
+				<Anchors>
+					<Anchor point="CENTER" relativePoint="BOTTOMLEFT">
+						<Offset>
+							<AbsDimension x="60" y="-12"/>
+						</Offset>
+					</Anchor>
+				</Anchors>
+				<Scripts>
+					<OnClick>
+						PanelTemplates_Tab_OnClick(SmokeyLootFrame)
+						SmokeyLoot_SwitchTab("database")
+					</OnClick>
+					<OnEnter>
+						GameTooltip:SetOwner(this, "ANCHOR_RIGHT")
+						GameTooltip:SetText("Database")
+					</OnEnter>
+					<OnLeave>
+						GameTooltip:Hide()
+					</OnLeave>
+				</Scripts>
+			</Button>
+			<Button name="SmokeyLootFrameTab2" inherits="CharacterFrameTabButtonTemplate" id="2" text="HR">
+				<Anchors>
+				   <Anchor point="LEFT" relativeTo="SmokeyLootFrameTab1" relativePoint="RIGHT">
+						<Offset>
+							<AbsDimension x="-16" y="0"/>
+						</Offset>
+					</Anchor>
+				</Anchors>
+				<Scripts>
+					<OnClick>
+						PanelTemplates_Tab_OnClick(SmokeyLootFrame)
+						SmokeyLoot_SwitchTab("hr")
+					</OnClick>
+					<OnEnter>
+						GameTooltip:SetOwner(this, "ANCHOR_RIGHT")
+						GameTooltip:SetText("Hard Reserve List")
+					</OnEnter>
+					<OnLeave>
+						GameTooltip:Hide()
+					</OnLeave>
+				</Scripts>
+			</Button>
+			<Button name="SmokeyLootFrameTab3" inherits="CharacterFrameTabButtonTemplate" id="3" text="Raid">
+				<Anchors>
+				   <Anchor point="LEFT" relativeTo="SmokeyLootFrameTab2" relativePoint="RIGHT">
+						<Offset>
+							<AbsDimension x="-16" y="0"/>
+						</Offset>
+					</Anchor>
+				</Anchors>
+				<Scripts>
+					<OnClick>
+						PanelTemplates_Tab_OnClick(SmokeyLootFrame)
+						SmokeyLoot_SwitchTab("raid")
+					</OnClick>
+					<OnEnter>
+						GameTooltip:SetOwner(this, "ANCHOR_RIGHT")
+						GameTooltip:SetText("Raid")
+					</OnEnter>
+					<OnLeave>
+						GameTooltip:Hide()
+					</OnLeave>
+				</Scripts>
+			</Button>
+			<Frame name="SmokeyLootEditEntryFrame" topLevel="true" hidden="true" enableMouse="true">
+				<Size x="300" y="300"/>
+				<Backdrop bgFile="Interface\Buttons\WHITE8X8" tile="true">
+					<TileSize val="8"/>
+					<Color r="0" g="0" b="0" a="0.9"/>
+				</Backdrop>
+				<Anchors>
+					<Anchor point="CENTER"/>
+				</Anchors>
+				<Layers>
+					<Layer level="BACKGROUND">
+						<FontString name="$parentEntryIndex" inherits="GameFontNormal" justifyH="CENTER" text="Database Entry #">
+							<Anchors>
+								<Anchor point="TOP">
+									<Offset x="0" y="-2"/>
+								</Anchor>
+							</Anchors>
+						</FontString>
+						<FontString name="$parentItemName" inherits="GameFontNormal" justifyH="LEFT" text="Item:">
+							<Anchors>
+								<Anchor point="TOPLEFT">
+									<Offset x="8" y="-36"/>
+								</Anchor>
+							</Anchors>
+						</FontString>
+						<FontString name="$parentItemID" inherits="GameFontNormal" justifyH="LEFT" text="ItemID:">
+							<Anchors>
+								<Anchor point="TOPLEFT" relativeTo="$parentItemName" relativePoint="BOTTOMLEFT">
+									<Offset x="0" y="-17"/>
+								</Anchor>
+							</Anchors>
+						</FontString>
+						<FontString name="$parentCharacter" inherits="GameFontNormal" justifyH="LEFT" text="Character:">
+							<Anchors>
+								<Anchor point="TOPLEFT" relativeTo="$parentItemID" relativePoint="BOTTOMLEFT">
+									<Offset x="0" y="-17"/>
+								</Anchor>
+							</Anchors>
+						</FontString>
+						<FontString name="$parentBonus" inherits="GameFontNormal" justifyH="LEFT" text="Bonus:">
+							<Anchors>
+								<Anchor point="TOPLEFT" relativeTo="$parentCharacter" relativePoint="BOTTOMLEFT">
+									<Offset x="0" y="-17"/>
+								</Anchor>
+							</Anchors>
+						</FontString>
+						<FontString name="$parentPluses" inherits="GameFontNormal" justifyH="LEFT" text="Pluses:" hidden="true">
+							<Anchors>
+								<Anchor point="TOPLEFT" relativeTo="$parentBonus" relativePoint="BOTTOMLEFT">
+									<Offset x="0" y="-17"/>
+								</Anchor>
+							</Anchors>
+						</FontString>
+					</Layer>
+				</Layers>
+				<Frames>
+					<Button name="$parentCloseButton" inherits="UIPanelCloseButton">
+						<Anchors>
+							<Anchor point="TOPRIGHT">
+								<Offset x="-5" y="-5"/>
+							</Anchor>
+						</Anchors>
+					</Button>
+					<EditBox name="$parentEditBox1" inherits="SmokeyLootEditBoxTemplate" id="1">
+						<Anchors>
+							<Anchor point="TOPRIGHT">
+								<Offset x="-14" y="-34"/>
+							</Anchor>
+						</Anchors>
+					</EditBox>
+					<EditBox name="$parentEditBox2" inherits="SmokeyLootEditBoxTemplate" id="2" numeric="true">
+						<Anchors>
+							<Anchor point="TOP" relativeTo="$parentEditBox1" relativePoint="BOTTOM">
+								<Offset x="0" y="-5"/>
+							</Anchor>
+						</Anchors>
+					</EditBox>
+					<EditBox name="$parentEditBox3" inherits="SmokeyLootEditBoxTemplate" id="3">
+						<Anchors>
+							<Anchor point="TOP" relativeTo="$parentEditBox2" relativePoint="BOTTOM">
+								<Offset x="0" y="-5"/>
+							</Anchor>
+						</Anchors>
+					</EditBox>
+					<EditBox name="$parentEditBox4" inherits="SmokeyLootEditBoxTemplate" id="4" numeric="true">
+						<Anchors>
+							<Anchor point="TOP" relativeTo="$parentEditBox3" relativePoint="BOTTOM">
+								<Offset x="0" y="-5"/>
+							</Anchor>
+						</Anchors>
+					</EditBox>
+					<EditBox name="$parentEditBox5" inherits="SmokeyLootEditBoxTemplate" id="4" numeric="true">
+						<Anchors>
+							<Anchor point="TOP" relativeTo="$parentEditBox4" relativePoint="BOTTOM">
+								<Offset x="0" y="-5"/>
+							</Anchor>
+						</Anchors>
+					</EditBox>
+					<Button name="$parentCancelButton" inherits="UIPanelButtonTemplate" text="CANCEL">
+						<Size x="80" y="22"/>
+						<Anchors>
+							<Anchor point="BOTTOMRIGHT">
+								<Offset x="-5" y="5"/>
+							</Anchor>
+						</Anchors>
+						<Scripts>
+							<OnClick>
+								SmokeyLootEditEntryFrameCancelButton_OnClick()
+							</OnClick>
+						</Scripts>
+					</Button>
+					<Button name="$parentAcceptButton" inherits="UIPanelButtonTemplate" text="ACCEPT">
+						<Size x="80" y="22"/>
+						<Anchors>
+							<Anchor point="RIGHT" relativeTo="$parentCancelButton" relativePoint="LEFT">
+								<Offset x="-2" y="0"/>
+							</Anchor>
+						</Anchors>
+						<Scripts>
+							<OnClick>
+								SmokeyLootEditEntryFrameAcceptButton_OnClick()
+							</OnClick>
+						</Scripts>
+					</Button>
+					<Button name="$parentDeleteButton" inherits="UIPanelButtonTemplate" text="DELETE">
+						<Size x="80" y="22"/>
+						<Anchors>
+							<Anchor point="BOTTOMLEFT">
+								<Offset x="5" y="5"/>
+							</Anchor>
+						</Anchors>
+						<Scripts>
+							<OnClick>
+								SmokeyLootEditEntryFrameDeleteButton_OnClick()
+							</OnClick>
+						</Scripts>
+					</Button>
+				</Frames>
+				<Scripts>
+					<OnHide>
+						SmokeyLootEditEntryFrame_OnHide()
+					</OnHide>
+				</Scripts>
+			</Frame>
+		</Frames>
+		<Scripts>
+			<OnLoad>
+				SmokeyLootFrame_OnLoad()
+			</OnLoad>
+			<OnEvent>
+				SmokeyLootFrame_OnEvent()
+			</OnEvent>
+			<OnDragStart>
+				if this:IsMovable() then
+					this:StartMoving()
+				end
+			</OnDragStart>
+			<OnDragStop>
+				if this:IsMovable() then
+					this:StopMovingOrSizing()
+				end
+			</OnDragStop>
+		</Scripts>
+	</Frame>
+	<!-- Minimap Button -->
+	<Button name="SmokeyLootMinimapButton" movable="true" parent="Minimap" enableMouse="true" toplevel="true" frameStrata="LOW">
+		<Size x="33" y="33"/>
+		<Anchors>
+			<Anchor point="CENTER" relativeTo="UIParent" relativePoint="CENTER"/>
+		</Anchors>
+		<Layers>
+			<Layer level="BACKGROUND">
+				<Texture file="Interface\AddOns\SmokeyLoot\Textures\Henry">
+					<Size x="20" y="20"/>
+					<Anchors>
+						<Anchor point="TOPLEFT">
+							<Offset x="7" y="-6"/>
+						</Anchor>
+					</Anchors>
+					<TexCoords left="0.075" right="0.925" top="0.075" bottom="0.925"/>
+				</Texture>
+			</Layer>
+			<Layer level="OVERLAY">
+				<Texture file="Interface\Minimap\MiniMap-TrackingBorder">
+					<Size x="56" y="56"/>
+					<Anchors>
+						<Anchor point="TOPLEFT"/>
+					</Anchors>
+				</Texture>
+			</Layer>
+		</Layers>
+		<HighlightTexture file="Interface\Minimap\UI-Minimap-ZoomButton-Highlight" alphaMode="ADD"/>
+		<Scripts>
+			<OnLoad>
+				this:RegisterForDrag("LeftButton")
+				this:SetClampedToScreen(true)
+			</OnLoad>
+			<OnDragStart>
+				this:LockHighlight()
+				if this:IsMovable() then
+					this:StartMoving()
+				end
+			</OnDragStart>
+			<OnDragStop>
+				this:UnlockHighlight()
+				if this:IsMovable() then
+					this:StopMovingOrSizing()
+					SMOKEYLOOT.POSITION = {this:GetCenter()}
+				end
+			</OnDragStop>
+			<OnEnter>
+				GameTooltip:SetOwner(this, "ANCHOR_TOPLEFT", 0, 0)
+				GameTooltip:AddLine("SmokeyLoot v" .. GetAddOnMetadata("SmokeyLoot", "Version"), 1, 1, 1)
+				GameTooltip:AddLine("")
+				GameTooltip:Show()
+			</OnEnter>
+			<OnLeave>
+				GameTooltip:Hide()
+			</OnLeave>
+			<OnMouseUp>
+				if arg1 == "LeftButton" then
+					SmokeyLoot_Toggle()
+				end
+			</OnMouseUp>
+		</Scripts>
+	</Button>
+	<!-- Loot Popup frame -->
+	<Frame name="SmokeyLootPopupFrame" parent="UIParent" enableMouse="true" toplevel="true" frameStrata="DIALOG" hidden="true" movable="true">
+		<Size x="280" y="84"/>
+		<Anchors>
+			<Anchor point="BOTTOM">
+				<Offset x="0" y="128"/>
+			</Anchor>
+		</Anchors>
+		<Backdrop bgFile="Interface\DialogFrame\UI-DialogBox-Gold-Background" edgeFile="Interface\DialogFrame\UI-DialogBox-Gold-Border" tile="true">
+			<BackgroundInsets left="11" right="12" top="12" bottom="11"/>
+			<TileSize val="32"/>
+			<EdgeSize val="32"/>
+		</Backdrop>
+		<Layers>
+			<Layer level="ARTWORK">
+				<Texture name="$parentSlotTexture" file="Interface\Buttons\UI-EmptySlot">
+					<Size x="55" y="55"/>
+					<Anchors>
+						<Anchor point="TOPLEFT">
+							<Offset x="5" y="-3"/>
+						</Anchor>
+					</Anchors>
+				</Texture>
+				<Texture name="$parentNameFrame" file="Interface\MerchantFrame\UI-Merchant-LabelSlots">
+					<Size x="180" y="58"/>
+					<Anchors>
+						<Anchor point="LEFT" relativeTo="$parentSlotTexture" relativePoint="RIGHT">
+							<Offset x="-9" y="-10"/>
+						</Anchor>
+					</Anchors>
+				</Texture>
+				<FontString name="$parentName" inherits="GameFontNormalSmall" text="Ashkandi, Greatsword of the Brotherhood" justifyH="LEFT">
+					<Size x="170" y="30"/>
+					<Anchors>
+						<Anchor point="LEFT" relativeTo="$parentSlotTexture" relativePoint="RIGHT">
+							<Offset x="-5" y="5"/>
+						</Anchor>
+					</Anchors>
+				</FontString>
+			</Layer>
+			<Layer level="OVERLAY">
+				<Texture name="$parentDecoration" file="Interface\DialogFrame\UI-DialogBox-Gold-Dragon" hidden="false">
+					<Size x="120" y="120"/>
+					<Anchors>
+						<Anchor point="TOPLEFT">d
+							<Offset>
+								<AbsDimension x="-30" y="15"/>
+							</Offset>
+						</Anchor>
+					</Anchors>
+				</Texture>
+				<Texture name="$parentCorner" file="Interface\DialogFrame\UI-DialogBox-Gold-Corner">
+					<Size x="32" y="32"/>
+					<Anchors>
+						<Anchor point="TOPRIGHT">
+							<Offset x="-6" y="-7"/>
+						</Anchor>
+					</Anchors>
+				</Texture>
+			</Layer>
+		</Layers>
+		<Frames>
+			<Button name="$parentIconFrame" enableMouse="true">
+				<Size x="34" y="34"/>
+				<Anchors>
+					<Anchor point="CENTER" relativeTo="$parentSlotTexture" relativePoint="CENTER">
+					</Anchor>
+				</Anchors>
+				<Layers>
+					<Layer level="OVERLAY">
+						<Texture name="$parentIcon">
+							<Size x="32" y="32"/>
+							<Anchors>
+								<Anchor point="CENTER"/>
+							</Anchors>
+						</Texture>
+					</Layer>
+				</Layers>
+				<Scripts>
+					<OnLoad>
+						this.hasItem = 1;
+					</OnLoad>
+					<OnEnter>
+						GameTooltip:SetOwner(this, "ANCHOR_RIGHT");
+						GameTooltip:SetHyperlink("item:"..this.itemID)
+						CursorUpdate()
+					</OnEnter>
+					<OnLeave>
+						GameTooltip:Hide()
+						ResetCursor()
+					</OnLeave>
+					<OnUpdate>
+						CursorOnUpdate()
+					</OnUpdate>
+					<OnClick>
+						if IsControlKeyDown() then
+							DressUpItemLink("item:"..this.itemID)
+						elseif IsShiftKeyDown() then
+							if ChatFrameEditBox:IsVisible() then
+								ChatFrameEditBox:Insert("item:"..this.itemID)
+							end
+						end
+					</OnClick>
+				</Scripts>
+			</Button>
+			<Button name="$parentHR" inherits="SmokeyRollButtonTemplate" text="HR">
+				<Anchors>
+					<Anchor point="RIGHT">
+						<Offset x="-10" y="2"/>
+					</Anchor>
+				</Anchors>
+				<Scripts>
+					<OnLoad>
+						this.roll = "HR"
+						this.tooltip = "Roll for Hard Reserve"
+						this:SetAlpha(0.5)
+						this:EnableMouse(nil)
+					</OnLoad>
+				</Scripts>
+			</Button>
+			<Button name="$parentSR" inherits="SmokeyRollButtonTemplate" text="SR">
+				<Anchors>
+					<Anchor point="BOTTOMLEFT">
+						<Offset x="13" y="8"/>
+					</Anchor>
+				</Anchors>
+				<Scripts>
+					<OnLoad>
+						this.roll = "SR"
+						this.tooltip = "Roll for Soft Reserve"
+						this:SetAlpha(0.5)
+						this:EnableMouse(nil)
+					</OnLoad>
+				</Scripts>
+			</Button>
+			<Button name="$parentMS" inherits="SmokeyRollButtonTemplate" text="MS">
+				<Anchors>
+					<Anchor point="LEFT" relativeTo="$parentSR" relativePoint="RIGHT">
+						<Offset x="0" y="0"/>
+					</Anchor>
+				</Anchors>
+				<Scripts>
+					<OnLoad>
+						this.roll = "MS"
+						this.tooltip = "Roll for Main Spec"
+					</OnLoad>
+				</Scripts>
+			</Button>
+			<Button name="$parentOS" inherits="SmokeyRollButtonTemplate" text="OS">
+				<Anchors>
+					<Anchor point="LEFT" relativeTo="$parentMS" relativePoint="RIGHT">
+						<Offset x="0" y="0"/>
+					</Anchor>
+				</Anchors>
+				<Scripts>
+					<OnLoad>
+						this.roll = "OS"
+						this.tooltip = "Roll for Off Spec"
+					</OnLoad>
+				</Scripts>
+			</Button>
+			<Button name="$parentTmog" inherits="SmokeyRollButtonTemplate" text="Tmog">
+				<Anchors>
+					<Anchor point="LEFT" relativeTo="$parentOS" relativePoint="RIGHT">
+						<Offset x="0" y="0"/>
+					</Anchor>
+				</Anchors>
+				<Scripts>
+					<OnLoad>
+						this.roll = "TMOG"
+						this.tooltip = "Roll for Transmog"
+					</OnLoad>
+				</Scripts>
+			</Button>
+			<Button name="$parentPassButton" inherits="UIPanelCloseButton">
+				<Anchors>
+					<Anchor point="TOPRIGHT" relativeTo="$parentCorner" relativePoint="TOPRIGHT">
+						<Offset x="4" y="4"/>
+					</Anchor>
+				</Anchors>
+				<Scripts>
+					<OnClick>
+						SmokeyLoot_Roll("PASS")
+					</OnClick>
+					<OnEnter>
+						GameTooltip:SetOwner(this, "ANCHOR_RIGHT")
+						GameTooltip:SetText(PASS)
+					</OnEnter>
+					<OnLeave>
+						GameTooltip:Hide()
+					</OnLeave>
+				</Scripts>
+			</Button>
+		</Frames>
+		<Scripts>
+			<OnLoad>
+				this:SetScale(1.1)
+			</OnLoad>
+			<OnMouseDown>
+				this:StartMoving()
+			</OnMouseDown>
+			<OnMouseUp>
+				this:StopMovingOrSizing()
+			</OnMouseUp>
+		</Scripts>
+	</Frame>
+	<!-- Master loot frame -->
+	<Frame name="SmokeyLootMLFrame" toplevel="true" movable="true" hidden="true" enableMouse="true" parent="UIParent" frameStrata="DIALOG">
+		<Size x="276" y="266"/>
+		<Anchors>
+			<Anchor point="CENTER"/>
+		</Anchors>
+		<Backdrop bgFile="Interface\Tooltips\UI-Tooltip-Background" edgeFile="Interface\Tooltips\UI-Tooltip-Border" tile="true">
+			<TileSize val="32"/>
+			<EdgeSize val="16"/>
+			<BackgroundInsets left="5" right="5" top="5" bottom="5"/>
+		</Backdrop>
+		<!-- <Backdrop bgFile="Interface\Buttons\WHITE8X8" tile="true">
+			<TileSize val="8"/>
+			<Color r="0" g="0" b="0" a="1"/>
+		</Backdrop> -->
+		<Frames>
+			<Button name="$parentLoot1" inherits="SmokeyLootButtonTemplate" id="1">
+				<Anchors>
+					<Anchor point="TOPLEFT">
+						<Offset x="10" y="-10"/>
+					</Anchor>
+				</Anchors>
+			</Button>
+			<Button name="$parentLoot2" inherits="SmokeyLootButtonTemplate" id="2">
+				<Anchors>
+					<Anchor point="TOPLEFT" relativeTo="$parentLoot1" relativePoint="BOTTOMLEFT">
+						<Offset x="0" y="-5"/>
+					</Anchor>
+				</Anchors>
+			</Button>
+			<Button name="$parentLoot3" inherits="SmokeyLootButtonTemplate" id="3">
+				<Anchors>
+					<Anchor point="TOPLEFT" relativeTo="$parentLoot2" relativePoint="BOTTOMLEFT">
+						<Offset x="0" y="-5"/>
+					</Anchor>
+				</Anchors>
+			</Button>
+			<Button name="$parentLoot4" inherits="SmokeyLootButtonTemplate" id="4">
+				<Anchors>
+					<Anchor point="TOPLEFT" relativeTo="$parentLoot3" relativePoint="BOTTOMLEFT">
+						<Offset x="0" y="-5"/>
+					</Anchor>
+				</Anchors>
+			</Button>
+			<Button name="$parentLoot5" inherits="SmokeyLootButtonTemplate" id="5">
+				<Anchors>
+					<Anchor point="TOPLEFT" relativeTo="$parentLoot4" relativePoint="BOTTOMLEFT">
+						<Offset x="0" y="-5"/>
+					</Anchor>
+				</Anchors>
+			</Button>
+			<Button name="$parentLoot6" inherits="SmokeyLootButtonTemplate" id="6">
+				<Anchors>
+					<Anchor point="TOPLEFT" relativeTo="$parentLoot5" relativePoint="BOTTOMLEFT">
+						<Offset x="0" y="-5"/>
+					</Anchor>
+				</Anchors>
+			</Button>
+			<Button name="$parentCloseButton" inherits="UIPanelCloseButton">
+				<Anchors>
+					<Anchor point="TOPRIGHT" relativePoint="TOPRIGHT"/>
+				</Anchors>
+			</Button>
+		</Frames>
+		<Scripts>
+			<OnLoad>
+				this:SetBackdropColor(0, 0, 0)
+				this:RegisterForDrag("LeftButton")
+				this:SetClampedToScreen(true)
+			</OnLoad>
+			<OnDragStart>
+				if this:IsMovable() then
+					this:StartMoving()
+				end
+			</OnDragStart>
+			<OnDragStop>
+				if this:IsMovable() then
+					this:StopMovingOrSizing()
+				end
+			</OnDragStop>
+			<!-- <OnShow>
+				SmokeyLootMLFrame_Update()
+			</OnShow> -->
+		</Scripts>
+	</Frame>
+	<!-- Import frame -->
+	<Frame name="SmokeyLootImportFrame" movable="true" parent="UIParent" enableMouse="true" toplevel="true" frameStrata="DIALOG" hidden="true">
+		<Size x="420" y="520"/>
+		<Anchors>
+			<Anchor point="CENTER"/>
+		</Anchors>
+		<Backdrop bgFile="Interface\Tooltips\UI-Tooltip-Background" edgeFile="Interface\Tooltips\UI-Tooltip-Border" tile="true">
+			<TileSize val="32"/>
+			<EdgeSize val="16"/>
+			<BackgroundInsets left="5" right="5" top="5" bottom="5"/>
+			<Color r="0" g="0" b="0"/>
+		</Backdrop>
+		<Frames>
+			<Button name="$parentCloseButton" inherits="UIPanelCloseButton">
+				<Anchors>
+					<Anchor point="TOPRIGHT" relativePoint="TOPRIGHT"/>
+				</Anchors>
+			</Button>
+			<ScrollFrame name="SmokeyLootImportFrameScrollFrame" inherits="UIPanelScrollFrameTemplate">
+				<Size x="330" y="440"/>
+				<Anchors>
+					<Anchor point="TOP">
+						<Offset x="-8" y="-28"/>
+					</Anchor>
+				</Anchors>
+				<ScrollChild>
+					<EditBox name="SmokeyImportText" multiLine="true" letters="5000">
+						<Size x="388" y="488"/>
+						<Scripts>
+							<OnLoad>
+								this:SetAutoFocus(true)
+							</OnLoad>
+							<OnShow>
+								this:HighlightText()
+							</OnShow>
+							<OnTextChanged>
+								ScrollingEdit_OnTextChanged()
+							</OnTextChanged>
+							<OnCursorChanged>
+								ScrollingEdit_OnCursorChanged(arg1, arg2, arg3, arg4)
+							</OnCursorChanged>
+							<OnUpdate>
+								ScrollingEdit_OnUpdate()
+							</OnUpdate>
+							<OnEscapePressed>
+								SmokeyLootImportFrame:Hide()
+							</OnEscapePressed>
+						</Scripts>
+						<FontString inherits="ChatFontNormal"/>
+					</EditBox>
+				</ScrollChild>
+			</ScrollFrame>
+			<Button name="$parentOkButton" inherits="UIPanelButtonTemplate" text="OK">
+				<Size x="50" y="20"/>
+				<Anchors>
+					<Anchor point="BOTTOM">
+						<Offset x="0" y="12"/>
+					</Anchor>
+				</Anchors>
+				<Scripts>
+					<OnClick>
+						SmokeyLoot_Import()
+					</OnClick>
+				</Scripts>
+			</Button>
+			<CheckButton name="$parentEnablePlusOne" inherits="UIOptionsCheckButtonTemplate" checked="true">
+				<Size x="22" y="22"/>
+				<Anchors>
+					<Anchor point="BOTTOMLEFT">
+						<Offset x="20" y="10"/>
+					</Anchor>
+				</Anchors>
+				<Layers>
+					<Layer level="BACKGROUND">
+						<FontString name="$parentText" inherits="GameFontNormal" text="Enable +1">
+							<Anchors>
+								<Anchor point="LEFT" relativeTo="$parent" relativePoint="RIGHT">
+									<Offset x="2" y="1"/>
+								</Anchor>
+							</Anchors>
+						</FontString>
+					</Layer>
+				</Layers>
+				<Scripts>
+					<OnShow>
+						this:SetChecked(SMOKEYLOOT.RAID.isPlusOneRaid == nil and true or SMOKEYLOOT.RAID.isPlusOneRaid)
+					</OnShow>
+				</Scripts>
+			</CheckButton>
+		</Frames>
+		<Scripts>
+			<OnLoad>
+				this:RegisterForDrag("LeftButton")
+			</OnLoad>
+			<OnDragStart>
+				this:StartMoving()
+			</OnDragStart>
+			<OnDragStop>
+				this:StopMovingOrSizing()
+			</OnDragStop>
+		</Scripts>
+	</Frame>
+</Ui>

@@ -1,0 +1,238 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.blizzard.com/wow/ui/..\FrameXML\UI.xsd">
+    <Button name="SmokeyLootEntryTemplate" hidden="true" virtual="true">
+        <Size x="450" y="16"/>
+        <Backdrop bgFile="Interface\Tooltips\UI-Tooltip-Background" tile="true">
+            <TileSize val="32"/>
+            <Color r="1" g="1" b="1" a="0.2"/>
+            <BackgroundInsets left="0" right="-0" top="0" bottom="1"/>
+        </Backdrop>
+        <Layers>
+            <Layer level="BORDER">
+                <Texture name="$parentIcon" hidden="true">
+                    <Size x="14" y="14"/>
+                    <Anchors>
+                        <Anchor point="LEFT">
+                            <Offset x="0" y="0"/>
+                        </Anchor>
+                    </Anchors>
+                </Texture>
+                <FontString name="$parentColumn1" inherits="GameFontNormal" justifyH="LEFT">
+                    <Size x="100" y="13"/>
+                    <Anchors>
+                        <Anchor point="RIGHT">
+                            <Offset x="-130" y="1"/>
+                        </Anchor>
+			        </Anchors>
+                </FontString>
+                <FontString name="$parentColumn2" inherits="GameFontNormalSmall" justifyH="LEFT">
+                <Size x="100" y="13"/>
+                    <Anchors>
+                        <Anchor point="RIGHT">
+                            <Offset x="-35" y="1"/>
+                        </Anchor>
+			        </Anchors>
+                </FontString>
+                <FontString name="$parentColumn3" inherits="GameFontNormalSmall" justifyH="RIGHT">
+                <Size x="100" y="13"/>
+                    <Anchors>
+                        <Anchor point="RIGHT">
+                            <Offset x="-2" y="1"/>
+                        </Anchor>
+			        </Anchors>
+                </FontString>
+            </Layer>
+        </Layers>
+		<ButtonText name="$parentText">
+			<Size x="200" y="13"/>
+			<Anchors>
+				<Anchor point="LEFT" relativeTo="$parentIcon" relativePoint="RIGHT">
+					<Offset x="2" y="1"/>
+				</Anchor>
+			</Anchors>
+		</ButtonText>
+		<NormalFont inherits="GameFontNormal" justifyH="LEFT"/>
+		<HighlightFont inherits="GameFontHighlight" justifyH="LEFT"/>
+		<DisabledFont inherits="GameFontDisable" justifyH="LEFT"/>
+		<Scripts>
+            <OnEnter>
+				SmokeyLootEntry_OnEnter()
+            </OnEnter>
+            <OnLeave>
+				SmokeyLootEntry_OnLeave()
+            </OnLeave>
+			<OnClick>
+				SmokeyLootEntry_OnClick()
+			</OnClick>
+		</Scripts>
+    </Button>
+    <Button name="SmokeyRollButtonTemplate" inherits="UIPanelButtonTemplate2" virtual="true">
+        <Size x="64" y="28"/>
+        <Scripts>
+            <OnClick>
+                SmokeyLoot_Roll(this.roll)
+            </OnClick>
+            <OnEnter>
+                GameTooltip:SetOwner(this, "ANCHOR_RIGHT")
+                GameTooltip:SetText(this.tooltip)
+            </OnEnter>
+            <OnLeave>
+                GameTooltip:Hide()
+            </OnLeave>
+        </Scripts>
+    </Button>
+    <Button name="SmokeyMenuButtonTemplate" virtual="true">
+        <Size x="64" y="16"/>
+        <ButtonText name="$parentNormalText"/>
+        <NormalFont inherits="GameFontHighlightSmall" justifyH="LEFT"/>
+        <HighlightFont inherits="GameFontHighlightSmall" justifyH="LEFT"/>
+        <DisabledFont inherits="GameFontDisableSmall" justifyH="LEFT"/>
+        <Layers>
+            <Layer level="BACKGROUND">
+                <Texture name="$parentHighlight" file="Interface\QuestFrame\UI-QuestTitleHighlight" alphaMode="ADD" setAllPoints="true" hidden="true"/>
+            </Layer>
+        </Layers>
+        <Scripts>
+            <OnEnter>
+                getglobal(this:GetName().."Highlight"):Show()
+            </OnEnter>
+            <OnLeave>
+                getglobal(this:GetName().."Highlight"):Hide()
+                GameTooltip:Hide()
+            </OnLeave>
+        </Scripts>
+    </Button>
+	<Button name="SmokeyLootButtonTemplate" virtual="true">
+        <Size x="37" y="37"/>
+		<Layers>
+			<Layer level="BACKGROUND">
+				<Texture name="$parentIcon" file="Interface\Icons\Ability_Ambush">
+					<Size x="37" y="37"/>
+				</Texture>
+			</Layer>
+			<Layer level="BORDER">
+				<FontString name="$parentCount" inherits="NumberFontNormal" justifyH="RIGHT" hidden="false" text="1">
+					<Anchors>
+						<Anchor point="BOTTOMRIGHT">
+							<Offset x="-5" y="2"/>
+						</Anchor>
+					</Anchors>
+                    <Shadow/>
+				</FontString>
+				<FontString name="$parentSR" inherits="GameFontNormal" justifyH="LEFT" hidden="false" text="SR">
+					<Anchors>
+						<Anchor point="TOPLEFT">
+							<Offset x="2" y="-2"/>
+						</Anchor>
+					</Anchors>
+                    <Shadow/>
+				</FontString>
+			</Layer>
+			<Layer level="ARTWORK">
+				<Texture name="$parentItemNameTexture" file="Interface\QuestFrame\UI-QuestItemNameFrame">
+					<Size x="160" y="62"/>
+					<Anchors>
+						<Anchor point="LEFT">
+							<Offset x="26" y="0"/>
+						</Anchor>
+					</Anchors>
+				</Texture>
+				<FontString name="$parentText" inherits="GameFontNormalSmall" justifyH="LEFT" text="Ashkandi, Greatsword of the Brotherhood">
+					<Size x="120" y="28"/>
+					<Anchors>
+						<Anchor point="LEFT" relativePoint="RIGHT">
+							<Offset x="10" y="6"/>
+						</Anchor>
+					</Anchors>
+				</FontString>
+				<FontString name="$parentWinner" inherits="GameFontNormalSmall" justifyH="LEFT" text="...">
+					<!-- <Size x="93" y="16"/> -->
+					<Anchors>
+						<Anchor point="BOTTOMLEFT" relativePoint="BOTTOMRIGHT">
+							<Offset x="10" y="2"/>
+						</Anchor>
+					</Anchors>
+				</FontString>
+			</Layer>
+		</Layers>
+        <NormalTexture name="$parentNormalTexture" file="Interface\Buttons\UI-Quickslot2">
+			<Size x="64" y="64"/>
+			<Anchors>
+				<Anchor point="CENTER">
+					<Offset x="0" y="-1"/>
+				</Anchor>
+			</Anchors>
+		</NormalTexture>
+		<PushedTexture file="Interface\Buttons\UI-Quickslot-Depress"/>
+		<HighlightTexture file="Interface\Buttons\ButtonHilight-Square" alphaMode="ADD"/>
+        <Frames>
+            <Button name="$parentStartOrEndRoll" inherits="SmokeyMenuButtonTemplate" text="Start Roll">
+                <Anchors>
+                    <Anchor point="TOPLEFT" relativeTo="$parentItemNameTexture" relativePoint="TOPRIGHT">
+                        <Offset x="-10" y="-12"/>
+                    </Anchor>
+			    </Anchors>
+                <Scripts>
+                    <OnClick>
+                        SmokeyLoot_StartOrEndRoll()
+                    </OnClick>
+                </Scripts>
+            </Button>
+            <Button name="$parentCancelRoll" inherits="SmokeyMenuButtonTemplate" text="Cancel">
+                <Anchors>
+                    <Anchor point="TOP" relativeTo="$parentStartOrEndRoll" relativePoint="BOTTOM">
+                        <Offset x="0" y="-2"/>
+                    </Anchor>
+			    </Anchors>
+                <Scripts>
+                    <OnClick>
+                        SmokeyLoot_CancelRoll()
+                    </OnClick>
+                </Scripts>
+            </Button>
+			<CheckButton name="$parentIgnoreTmog" inherits="UICheckButtonTemplate">
+				<Size x="18" y="18"/>
+				<Anchors>
+					<Anchor point="TOPLEFT" relativeTo="$parentCancelRoll" relativePoint="TOPRIGHT">
+						<Offset x="0" y="0"/>
+					</Anchor>
+				</Anchors>
+				<Scripts>
+					<OnEnter>
+						GameTooltip:SetOwner(this, "ANCHOR_RIGHT")
+						GameTooltip:SetText("No transmog trading shenanigans")
+						GameTooltip:Show()
+					</OnEnter>
+					<OnLeave>
+						GameTooltip:Hide()
+					</OnLeave>
+					<OnClick>
+						SmokeyLootMLFrame_Update()
+						PlayClickSound()
+					</OnClick>
+				</Scripts>
+			</CheckButton>
+        </Frames>
+		<Scripts>
+			<OnLoad>
+				this:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+				this.hasItem = 1
+			</OnLoad>
+			<OnEnter>
+				SmokeyLootButton_OnEnter()
+            </OnEnter>
+			<OnLeave>
+				GameTooltip:Hide()
+				ResetCursor()
+            </OnLeave>
+			<OnUpdate>
+				CursorOnUpdate()
+			</OnUpdate>
+			<OnClick>
+
+			</OnClick>
+		</Scripts>
+	</Button>
+	<EditBox name="SmokeyLootEditBoxTemplate" inherits="InputBoxTemplate" virtual="true" autoFocus="false">
+		<Size x="180" y="22"/>
+	</EditBox>
+</Ui>
