@@ -125,6 +125,7 @@ local SubTypesForClass = {
 		["Polearms"] = true,
 		["Staves"] = true,
 		["Miscellaneous"] = true,
+		["Idols"] = true,
 	},
 	SHAMAN = {
 		["Cloth"] = true,
@@ -139,6 +140,7 @@ local SubTypesForClass = {
 		["Staves"] = true,
 		["Shields"] = true,
 		["Miscellaneous"] = true,
+		["Totems"] = true
 	},
 	PALADIN = {
 		["Cloth"] = true,
@@ -154,6 +156,7 @@ local SubTypesForClass = {
 		["Polearms"] = true,
 		["Shields"] = true,
 		["Miscellaneous"] = true,
+		["Librams"] = true,
 	},
 	MAGE = {
 		["Cloth"] = true,
@@ -460,23 +463,15 @@ end
 
 function CanRollMS(itemID)
 	if not tonumber(itemID) then
-		return false
-	end
-	if CanRollCache.ms[itemID] then
-		return CanRollCache.ms[itemID] == 0 and false or true
-	end
-	local itemName, itemLink, itemQuality, itemLevel, itemType, itemSubType, itemCount, itemEquipLoc, itemTexture = GetItemInfo(itemID)
-	if not itemName then
 		return nil
 	end
+	local itemName, itemLink, itemQuality, itemLevel, itemType, itemSubType, itemCount, itemEquipLoc, itemTexture = GetItemInfo(itemID)
 	if itemType == "Recipe" or itemType == "Container" or itemType == "Trade Goods" then
-		CanRollCache.ms[itemID] = 0
 		return false
 	end
 	if (itemType == "Armor" or itemType == "Weapon") and itemEquipLoc ~= "" then
 		local _, class = UnitClass("player")
 		if not SubTypesForClass[class][itemSubType] then
-			CanRollCache.ms[itemID] = 0
 			return false
 		end
 	end
@@ -496,11 +491,9 @@ function CanRollMS(itemID)
 		local rL, gL, bL = textLeft:GetTextColor()
 		local rR, gR, bR = textRight:GetTextColor()
 		if strfind(textLeft:GetText() or "", "Adds a mount") or strfind(textLeft:GetText() or "", "Adds a companion") then
-			CanRollCache.ms[itemID] = 0
 			return false
 		end
 		if IsRed(rL, gL, bL) or IsRed(rR, gR, bR) then
-			CanRollCache.ms[itemID] = 0
 			return false
 		end
 	end
@@ -747,7 +740,7 @@ function SmokeyLootFrame_OnEvent()
 				if SmokeyItem.tmogWinner and SmokeyItem.winner and SmokeyItem.tmogWinner ~= SmokeyItem.winner and not SmokeyItem.tmogIgnored then
 					SendChatMessage(format("%s wins %s (%d %s), trade to %s (%d %s)", SmokeyItem.tmogWinner, SmokeyItem.link, SmokeyItem.tmogWinRoll, "TMOG", SmokeyItem.winner, SmokeyItem.winRoll, SmokeyItem.winType), channel)
 					if SmokeyItem.tmogWinner ~= Me then
-						SendChatMessage(format("Please, trade %s to |Hplayer:%s|h[%s]|h after collecting transmog appearance. <3", SmokeyItem.link, SmokeyItem.winner, SmokeyItem.winner), "WHISPER", nil, SmokeyItem.tmogWinner)
+						SendChatMessage(format("Please, trade %s to %s after collecting transmog appearance. <3", SmokeyItem.link, SmokeyItem.winner), "WHISPER", nil, SmokeyItem.tmogWinner)
 					end
 				elseif SmokeyItem.winner then
 					SendChatMessage(format("%s wins %s (%d %s)", SmokeyItem.winner, SmokeyItem.link, SmokeyItem.winRoll, SmokeyItem.winType), channel)
