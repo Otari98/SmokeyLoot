@@ -742,7 +742,65 @@
 			<TileSize val="8"/>
 			<Color r="0" g="0" b="0" a="1"/>
 		</Backdrop> -->
+		<Layers>
+			<Layer level="BACKGROUND">
+				<Texture file="Interface\HelpFrame\HelpFrameTab-Active">
+					<Anchors>
+						<Anchor point="TOPLEFT">
+							<Offset x="5" y="26"/>
+						</Anchor>
+					</Anchors>
+				</Texture>
+			</Layer>
+		</Layers>
 		<Frames>
+			<Button name="$parentAnnounce">
+				<Size x="16" y="16"/>
+				<Anchors>
+					<Anchor point="TOPLEFT">
+						<Offset x="18" y="16"/>
+					</Anchor>
+				</Anchors>
+				<NormalTexture file="Interface\Buttons\UI-GuildButton-MOTD-Up"/>
+				<HighlightTexture file="Interface\Buttons\UI-GuildButton-MOTD-Up" alphaMode="ADD"/>
+				<PushedTexture file="Interface\Buttons\UI-GuildButton-MOTD-Up"/>
+				<DisabledTexture file="Interface\Buttons\UI-GuildButton-MOTD-Disabled"/>
+				<Scripts>
+					<OnEnter>
+						GameTooltip:SetOwner(this, "ANCHOR_RIGHT")
+						GameTooltip:SetText("Announce loot")
+						GameTooltip:Show()
+					</OnEnter>
+					<OnLeave>
+						GameTooltip:Hide()
+					</OnLeave>
+					<OnClick>
+						SmokeyLoot_AnnounceLoot()
+					</OnClick>
+				</Scripts>
+			</Button>
+			<CheckButton name="$parentIgnoreTmog" inherits="UICheckButtonTemplate">
+				<Size x="18" y="18"/>
+				<Anchors>
+					<Anchor point="TOPLEFT">
+						<Offset x="40" y="16"/>
+					</Anchor>
+				</Anchors>
+				<Scripts>
+					<OnEnter>
+						GameTooltip:SetOwner(this, "ANCHOR_RIGHT")
+						GameTooltip:SetText("No transmog shenanigans")
+						GameTooltip:Show()
+					</OnEnter>
+					<OnLeave>
+						GameTooltip:Hide()
+					</OnLeave>
+					<OnClick>
+						SmokeyLootMLFrame_Update()
+						PlayClickSound()
+					</OnClick>
+				</Scripts>
+			</CheckButton>
 			<Button name="$parentLoot1" inherits="SmokeyLootButtonTemplate" id="1">
 				<Anchors>
 					<Anchor point="TOPLEFT">

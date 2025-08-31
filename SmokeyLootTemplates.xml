@@ -189,28 +189,6 @@
                     </OnClick>
                 </Scripts>
             </Button>
-			<CheckButton name="$parentIgnoreTmog" inherits="UICheckButtonTemplate">
-				<Size x="18" y="18"/>
-				<Anchors>
-					<Anchor point="TOPLEFT" relativeTo="$parentCancelRoll" relativePoint="TOPRIGHT">
-						<Offset x="0" y="0"/>
-					</Anchor>
-				</Anchors>
-				<Scripts>
-					<OnEnter>
-						GameTooltip:SetOwner(this, "ANCHOR_RIGHT")
-						GameTooltip:SetText("No transmog trading shenanigans")
-						GameTooltip:Show()
-					</OnEnter>
-					<OnLeave>
-						GameTooltip:Hide()
-					</OnLeave>
-					<OnClick>
-						SmokeyLootMLFrame_Update()
-						PlayClickSound()
-					</OnClick>
-				</Scripts>
-			</CheckButton>
         </Frames>
 		<Scripts>
 			<OnLoad>
@@ -228,7 +206,7 @@
 				CursorOnUpdate()
 			</OnUpdate>
 			<OnClick>
-
+				SmokeyLootButton_OnClick()
 			</OnClick>
 		</Scripts>
 	</Button>
