@@ -137,14 +137,14 @@
 					</OnLoad>
 					<OnEnterPressed>
 						this:ClearFocus()
-						SmokeyLoot_Search()
+						SmokeyLootFrame_Update()
 					</OnEnterPressed>
 					<OnTextChanged>
-						SmokeyLoot_Search()
+						SmokeyLootFrame_Update()
 					</OnTextChanged>
 					<OnEscapePressed>
 						this:ClearFocus()
-						SmokeyLoot_Search()
+						SmokeyLootFrame_Update()
 					</OnEscapePressed>
 				</Scripts>
 				<FontString name="$parentSearchString" inherits="GameFontNormal"/>
@@ -379,7 +379,7 @@
 							</Anchor>
 						</Anchors>
 					</EditBox>
-					<EditBox name="$parentEditBox4" inherits="SmokeyLootEditBoxTemplate" id="4" numeric="true">
+					<EditBox name="$parentEditBox4" inherits="SmokeyLootEditBoxTemplate" id="4">
 						<Anchors>
 							<Anchor point="TOP" relativeTo="$parentEditBox3" relativePoint="BOTTOM">
 								<Offset x="0" y="-5"/>
@@ -744,10 +744,36 @@
 		</Backdrop> -->
 		<Layers>
 			<Layer level="BACKGROUND">
+				<!-- <Texture name="$parentLeft" file="Interface\CharacterFrame\UI-CharacterFrame-GroupIndicator">
+					<Size x="24" y="16"/>
+					<Anchors>
+						<Anchor point="TOPLEFT">
+							<Offset x="0" y="14"/>
+						</Anchor>
+					</Anchors>
+					<TexCoords left="0" right="0.1875" top="0" bottom="1"/>
+				</Texture>
+				<Texture name="$parentRight" file="Interface\CharacterFrame\UI-CharacterFrame-GroupIndicator">
+					<Size x="24" y="16"/>
+					<Anchors>
+						<Anchor point="TOPLEFT" relativeTo="$parentLeft" relativePoint="TOPRIGHT">
+							<Offset x="35" y="0"/>
+						</Anchor>
+					</Anchors>
+					<TexCoords left="0.53125" right="0.71875" top="0" bottom="1"/>
+				</Texture>
+				<Texture name="$parentMiddle" file="Interface\CharacterFrame\UI-CharacterFrame-GroupIndicator">
+					<Size x="0" y="16"/>
+					<Anchors>
+						<Anchor point="LEFT" relativeTo="$parentLeft" relativePoint="RIGHT"/>
+						<Anchor point="RIGHT" relativeTo="$parentRight" relativePoint="LEFT"/>
+					</Anchors>
+					<TexCoords left="0.1875" right="0.53125" top="0" bottom="1"/>
+				</Texture> -->
 				<Texture file="Interface\HelpFrame\HelpFrameTab-Active">
 					<Anchors>
 						<Anchor point="TOPLEFT">
-							<Offset x="5" y="26"/>
+							<Offset x="5" y="27"/>
 						</Anchor>
 					</Anchors>
 				</Texture>
@@ -872,7 +898,7 @@
 	</Frame>
 	<!-- Import frame -->
 	<Frame name="SmokeyLootImportFrame" movable="true" parent="UIParent" enableMouse="true" toplevel="true" frameStrata="DIALOG" hidden="true">
-		<Size x="420" y="520"/>
+		<Size x="420" y="560"/>
 		<Anchors>
 			<Anchor point="CENTER"/>
 		</Anchors>
@@ -926,7 +952,7 @@
 				<Size x="50" y="20"/>
 				<Anchors>
 					<Anchor point="BOTTOM">
-						<Offset x="0" y="12"/>
+						<Offset x="0" y="22"/>
 					</Anchor>
 				</Anchors>
 				<Scripts>
@@ -936,10 +962,10 @@
 				</Scripts>
 			</Button>
 			<CheckButton name="$parentEnablePlusOne" inherits="UIOptionsCheckButtonTemplate" checked="true">
-				<Size x="22" y="22"/>
+				<Size x="32" y="32"/>
 				<Anchors>
 					<Anchor point="BOTTOMLEFT">
-						<Offset x="20" y="10"/>
+						<Offset x="20" y="50"/>
 					</Anchor>
 				</Anchors>
 				<Layers>
@@ -956,6 +982,30 @@
 				<Scripts>
 					<OnShow>
 						this:SetChecked(SMOKEYLOOT.RAID.isPlusOneRaid == nil and true or SMOKEYLOOT.RAID.isPlusOneRaid)
+					</OnShow>
+				</Scripts>
+			</CheckButton>
+			<CheckButton name="$parentEnableBongoAltRule" inherits="UIOptionsCheckButtonTemplate" checked="false">
+				<Size x="32" y="32"/>
+				<Anchors>
+					<Anchor point="TOPLEFT" relativeTo="$parentEnablePlusOne" relativePoint="BOTTOMLEFT">
+						<Offset x="0" y="6"/>
+					</Anchor>
+				</Anchors>
+				<Layers>
+					<Layer level="BACKGROUND">
+						<FontString name="$parentText" inherits="GameFontNormal" text="Bongo-alt rule">
+							<Anchors>
+								<Anchor point="LEFT" relativeTo="$parent" relativePoint="RIGHT">
+									<Offset x="2" y="1"/>
+								</Anchor>
+							</Anchors>
+						</FontString>
+					</Layer>
+				</Layers>
+				<Scripts>
+					<OnShow>
+						this:SetChecked(SMOKEYLOOT.RAID.isBongoAltRaid == nil and false or SMOKEYLOOT.RAID.isBongoAltRaid)
 					</OnShow>
 				</Scripts>
 			</CheckButton>

@@ -15,6 +15,7 @@
                             <Offset x="0" y="0"/>
                         </Anchor>
                     </Anchors>
+					<TexCoords left="0.078125" right="0.90625" top="0.078125" bottom="0.90625"/>
                 </Texture>
                 <FontString name="$parentColumn1" inherits="GameFontNormal" justifyH="LEFT">
                     <Size x="100" y="13"/>
