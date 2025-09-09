@@ -6,7 +6,7 @@
 local _G = _G or getfenv(0)
 
 local Me = UnitName("player")
-local MLSearchPattern = gsub(ERR_NEW_LOOT_MASTER_S, "%%s", "(%a+)")
+local MLSearchPattern = gsub(ERR_NEW_LOOT_MASTER_S, "%%s", "(.+)")
 local RollSearchPattern = gsub(gsub(RANDOM_ROLL_RESULT, "%%s", "(.+)"), "%%d %(%%d%-%%d%)", "(%%d+) %%(%%d%%-(%%d+)%%)")
 local CurrentTab = "database"
 
@@ -724,7 +724,7 @@ function SmokeyLootFrame_OnEvent()
 		local _, _, m = strfind(arg1, MLSearchPattern)
 		if m then
 			Master = m
-			debug(event, "master:", Master)
+			debug(event, arg1, "master:", Master)
 			SmokeyLoot_EnableRaidControls()
 		end
 		-- Reading rolls from chat
@@ -913,8 +913,14 @@ function SmokeyLootFrame_OnEvent()
 					end
 					debug(message, player)
 				elseif strfind(message, "ML_", 1, true) then
-					Master = strsub(message, 4)
-					debug(message, player)
+					local m = strsub(message, 4)
+					for i = 1, GetNumRaidMembers() do
+						if m == GetRaidRosterInfo(i) then
+							Master = m
+							break
+						end
+					end
+					debug(message, player, "master:", Master)
 					SmokeyLoot_EnableRaidControls()
 				-- raid update
 				elseif strfind(message, "R_start", 1, true) then
