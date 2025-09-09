@@ -314,7 +314,7 @@ local debug = function(...)
 	for i = 1, size do
 		arg[i] = tostring(arg[i])
 	end
-	local msg = size > 1 and table.concat(arg, ", ") or tostring(arg[1])
+	local msg = size > 1 and table.concat(arg, " ") or tostring(arg[1])
 	local time = GetTime()
 	DEFAULT_CHAT_FRAME:AddMessage("["..format("%.3f", time).."] "..msg)
 	return msg, time
@@ -705,7 +705,7 @@ function SmokeyLootFrame_OnEvent()
 
 	elseif event == "PARTY_LOOT_METHOD_CHANGED" then
 		Master = SmokeyLoot_GetLootMasterName()
-		debug(event, "master: "..tostring(Master))
+		debug(event, "master:", Master)
 		SmokeyLoot_EnableRaidControls()
 
 	elseif event == "RAID_ROSTER_UPDATE" then
@@ -718,13 +718,13 @@ function SmokeyLootFrame_OnEvent()
 		if isMLmethod and (not Master or Master == UNKNOWN) then
 			SendAddonMessage("SmokeyLoot", "GET_ML", "RAID")
 		end
-		debug(event, "master: "..tostring(Master), "isMLmethod: "..tostring(isMLmethod))
+		debug(event, "master:", Master, "isMLmethod:", isMLmethod)
 		
 	elseif event == "CHAT_MSG_SYSTEM" then
 		local _, _, m = strfind(arg1, MLSearchPattern)
 		if m then
 			Master = m
-			debug(event, "master: "..tostring(Master))
+			debug(event, "master:", Master)
 			SmokeyLoot_EnableRaidControls()
 		end
 		-- Reading rolls from chat
@@ -732,7 +732,7 @@ function SmokeyLootFrame_OnEvent()
 			return
 		end
 		local _, _, player, roll, max = strfind(arg1, RollSearchPattern)
-		debug("player "..tostring(player), "roll "..tostring(roll), "max "..tostring(max), "AlreadyRolled "..tostring(AlreadyRolled[player]))
+		debug(event, "player:", player, "roll:", roll, "max:", max, "AlreadyRolled:", AlreadyRolled[player])
 		roll, max = tonumber(roll), tonumber(max)
 		if player and roll and max and not AlreadyRolled[player] then
 			local index
@@ -799,9 +799,11 @@ function SmokeyLootFrame_OnEvent()
 		if isMLmethod and (not Master or Master == UNKNOWN) then
 			SendAddonMessage("SmokeyLoot", "GET_ML", "RAID")
 		end
-		debug(event, "master: "..tostring(Master), "isMLmethod: "..tostring(isMLmethod))
+		debug(event, "master:", Master, "isMLmethod:", isMLmethod)
 		if Master == Me and getn(SMOKEYLOOT.RAID) > 0 then
-			SmokeyLootMLFrame:Show()
+			if not (GetNumLootItems() == 1 and LootSlotIsCoin(1)) then
+				SmokeyLootMLFrame:Show()
+			end
 			SmokeyLootMLFrame_Update()
 		end
 
@@ -809,7 +811,7 @@ function SmokeyLootFrame_OnEvent()
 		SmokeyLootMLFrame:Hide()
 
 	elseif event == "LOOT_SLOT_CLEARED" then
-		debug(SmokeyItemLink)
+		debug(event, "SmokeyItem.link:", SmokeyItem.link)
 		if arg1 == SmokeyItem.slot then
 			for i = 1, getn(SMOKEYLOOT.RAID) do
 				if SMOKEYLOOT.RAID[i].char == SmokeyItem.winner then
@@ -861,14 +863,13 @@ function SmokeyLootFrame_OnEvent()
 				if not strfind(candidates or "", Me) then
 					return
 				end
-				debug(SmokeyItem.id)
+				debug(message)
 				SmokeyLootPopupFrameIconFrameIcon:SetTexture(texture)
 				SmokeyLootPopupFrameIconFrame.itemID = tonumber(id)
 				SmokeyItem.id = tonumber(id)
 				SmokeyLootPopupFrameName:SetText(name)
 				SmokeyLootPopupFrame:Show()
 				CacheItem(SmokeyItem.id)
-				debug(srBy)
 				if MyHRItemIDs[SmokeyItem.id] then
 					SmokeyLootPopupFrameHR:EnableMouse(true)
 					SmokeyLootPopupFrameHR:SetAlpha(1)
@@ -906,26 +907,27 @@ function SmokeyLootFrame_OnEvent()
 					if name then
 						SendAddonMessage("SmokeyLoot", "ML_"..name, "RAID")
 					end
-					debug(message, player, name)
+					debug(message, player)
 				elseif strfind(message, "ML_", 1, true) then
 					Master = strsub(message, 4)
-					debug(message, player, Master)
+					debug(message, player)
 					SmokeyLoot_EnableRaidControls()
 				-- raid update
 				elseif strfind(message, "R_start", 1, true) then
-					local usingPlus = strsub(message, 9)
-					debug(message, usingPlus)
-					SMOKEYLOOT.RAID = {}
+					local usingPlus = strsub(message, 9, 9)
+					local isBongoAlt = strsub(message, 11, 11)
+					debug(message, "usingPlus:", usingPlus, "bongoAlt:", isBongoAlt)
+					arraywipe(SMOKEYLOOT.RAID)
 					SMOKEYLOOT.RAID.isPlusOneRaid = usingPlus == "1"
+					SMOKEYLOOT.RAID.isBongoAltRaid = isBongoAlt == "1"
 				elseif message == "R_end" then
 					SmokeyLootFrame_Update()
-					debug(message)
+					debug(message, player)
 				elseif message == "R_clear" then
-					debug(message)
+					debug(message, player)
 					arraywipe(SMOKEYLOOT.RAID)
 					SmokeyLootFrame_Update()
 				else
-					-- debug(message)
 					local _, _, key, itemID, item, char, bonus, pluses, gotHR = strfind(message, "^(%d+);(%d+);(.*);(.*);(%-?%d+);(%d+);(.*)")
 					if key then
 						tinsert(SMOKEYLOOT.RAID, tonumber(key), {
@@ -945,7 +947,7 @@ function SmokeyLootFrame_OnEvent()
 				return
 			end
 			if message == "GET_DB_LATEST" then
-				debug("DB requested by "..player)
+				debug("DB requested by", player)
 				SmokeyLoot_Push()
 				return
 			end
@@ -1233,7 +1235,7 @@ local function DiscardAltRolls(rollType)
 			for k2, v2 in pairs(Rolls[rollType]) do
 				-- discard Swab Toker roll if not a bongo alt
 				if not IsBongoAlt(k2) and SMOKEYLOOT.GUILD[k2].rankIndex == 6 then
-					debug("alt roll discarded: "..k2.." "..v2)
+					debug("alt roll discarded:", k2, v2)
 					Rolls[rollType][k2] = nil
 				end
 			end
@@ -1264,7 +1266,7 @@ local function DiscardLowRankRolls(rollType)
 	local highestRank = min(unpack(ranks))
 	for k, v in pairs(Rolls[rollType]) do
 		if SMOKEYLOOT.GUILD[k] and tonumber(SMOKEYLOOT.GUILD[k].rankIndex) > highestRank then
-			debug("discarded low rank roll: "..k.." "..tostring(v))
+			debug("discarded low rank roll:", k, v)
 			Rolls[rollType][k] = nil
 		end
 	end
@@ -1330,7 +1332,7 @@ function SmokeyLoot_GetWinner()
 			end
 		end
 	end
-	debug("winner: "..tostring(SmokeyItem.winner), "tmogWinner: "..tostring(SmokeyItem.tmogWinner))
+	debug("winner:", SmokeyItem.winner, "tmogWinner:", SmokeyItem.tmogWinner)
 end
 
 function SmokeyLoot_StartOrEndRoll()
@@ -1366,7 +1368,6 @@ function SmokeyLoot_StartOrEndRoll()
 			end
 		end
 		SendAddonMessage("SmokeyLoot", "StartRoll:"..itemID..";"..color..itemName.."|r;"..itemTexture..";"..srBy..";"..candidates, "RAID")
-		debug("candidates: "..tostring(candidates))
 		this:SetText("End Roll")
 	else
 		-- End Roll
@@ -1652,6 +1653,7 @@ function SmokeyLoot_FinishRaidRoutine()
 		end
 	end
 	-- RAID now should only contain people who need to get +10 bonus (or get on HR list)
+	debug("+10 recievers")
 	for k, v in ipairs(SMOKEYLOOT.RAID) do
 		local newBonus = v.bonus + 10
 		if newBonus == 100 then
@@ -1697,6 +1699,7 @@ function SmokeyLoot_FinishRaidRoutine()
 				end
 			end
 		end
+		debug(v.item, v.itemID, v.char, "oldBonus:", v.bonus, "newBonus:", newBonus)
 	end
 	arraywipe(SMOKEYLOOT.RAID)
 	listwipe(SMOKEYLOOT.RAID)
@@ -1712,7 +1715,6 @@ function SmokeyLootFinishRaidButton_OnClick()
 	SmokeyLoot_Pull()
 	PushAfter = true
 	Delay(3, function()
-		debug(SmokeyLoot_GetRemoteVersion(), SMOKEYLOOT.DATABASE.date)
 		if SmokeyLoot_GetRemoteVersion() <= SMOKEYLOOT.DATABASE.date then
 			PushAfter = false
 			SmokeyLoot_FinishRaidRoutine()
@@ -1795,7 +1797,7 @@ function SmokeyLoot_PushRaid(clear)
 	if not str then
 		return
 	end
-	SendAddonMessage("SmokeyLoot", "R_start;"..(SMOKEYLOOT.RAID.isPlusOneRaid and 1 or 0), "RAID")
+	SendAddonMessage("SmokeyLoot", "R_start;"..(SMOKEYLOOT.RAID.isPlusOneRaid and 1 or 0)..";"..(SMOKEYLOOT.RAID.isBongoAltRaid and 1 or 0), "RAID")
 	debug("Pushing raid")
 	local count = 1
 	raidPushFrame:SetScript("OnUpdate", function()
@@ -1845,6 +1847,7 @@ function SmokeyLoot_SetRemoteVersion()
 	SMOKEYLOOT.DATABASE.date = time()
 	local guildInfo = gsub(GetGuildInfoText(), "\n%a*%d+$", "\n"..Me..SMOKEYLOOT.DATABASE.date)
 	SetGuildInfoText(guildInfo)
+	debug("new version set", Me..SMOKEYLOOT.DATABASE.date)
 end
 
 function SmokeyLoot_GetLootMasterName()
@@ -1881,7 +1884,7 @@ function SmokeyLoot_UpdateHR()
 			end
 		end
 	end
-	debug("HR list updated")
+	debug("HR list updated, my HR items:")
 	for id in pairs(MyHRItemIDs) do
 		debug(id, (GetItemInfo(id)))
 	end
