@@ -833,12 +833,16 @@ function SmokeyLootFrame_OnEvent()
 			if Master == Me then
 				local channel = IsRaidOfficer() and "RAID_WARNING" or "RAID"
 				if SmokeyItem.tmogWinner and SmokeyItem.winner and SmokeyItem.tmogWinner ~= SmokeyItem.winner and not SmokeyItem.tmogIgnored then
-					SendChatMessage(format("%s wins %s (%d %s), trade to %s (%d %s)", SmokeyItem.tmogWinner, SmokeyItem.link, SmokeyItem.tmogWinRoll, "TMOG", SmokeyItem.winner, SmokeyItem.winRoll, SmokeyItem.winType), channel)
+					SendChatMessage(format("|cffffffff|Hplayer:%s|h[%s]|h|r wins %s (%d %s), trade to |cffffffff|Hplayer:%s|h[%s]|h|r (%d %s)",
+						SmokeyItem.tmogWinner, SmokeyItem.tmogWinner, SmokeyItem.link, SmokeyItem.tmogWinRoll, "TMOG",
+						SmokeyItem.winner, SmokeyItem.winner, SmokeyItem.winRoll, SmokeyItem.winType), channel)
 					if SmokeyItem.tmogWinner ~= Me then
-						SendChatMessage(format("Please, trade %s to %s after collecting transmog appearance. <3", SmokeyItem.link, SmokeyItem.winner), "WHISPER", nil, SmokeyItem.tmogWinner)
+						SendChatMessage(format("Please, trade %s to |cffffffff|Hplayer:%s|h[%s]|h|r after collecting transmog appearance. <3",
+							SmokeyItem.link, SmokeyItem.winner, SmokeyItem.winner), "WHISPER", nil, SmokeyItem.tmogWinner)
 					end
 				elseif SmokeyItem.winner then
-					SendChatMessage(format("%s wins %s (%d %s)", SmokeyItem.winner, SmokeyItem.link, SmokeyItem.winRoll, SmokeyItem.winType), channel)
+					SendChatMessage(format("|cffffffff|Hplayer:%s|h[%s]|h|r wins %s (%d %s)",
+						SmokeyItem.winner, SmokeyItem.winner, SmokeyItem.link, SmokeyItem.winRoll, SmokeyItem.winType), channel)
 				end
 			end
 			SmokeyItem.Reset()
