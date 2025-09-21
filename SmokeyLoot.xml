@@ -553,7 +553,7 @@
 					</Anchors>
 				</Texture>
 				<FontString name="$parentName" inherits="GameFontNormalSmall" text="Ashkandi, Greatsword of the Brotherhood" justifyH="LEFT">
-					<Size x="170" y="30"/>
+					<Size x="150" y="30"/>
 					<Anchors>
 						<Anchor point="LEFT" relativeTo="$parentSlotTexture" relativePoint="RIGHT">
 							<Offset x="-5" y="5"/>
@@ -729,7 +729,7 @@
 	</Frame>
 	<!-- Master loot frame -->
 	<Frame name="SmokeyLootMLFrame" toplevel="true" movable="true" hidden="true" enableMouse="true" parent="UIParent" frameStrata="DIALOG">
-		<Size x="276" y="266"/>
+		<Size x="358" y="266"/>
 		<Anchors>
 			<Anchor point="CENTER"/>
 		</Anchors>
