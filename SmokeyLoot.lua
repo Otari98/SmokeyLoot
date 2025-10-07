@@ -758,6 +758,7 @@ function SmokeyLootFrame_OnEvent()
 			Master = m
 			debug(event, arg1, "master:", Master)
 			SmokeyLoot_EnableRaidControls()
+			return
 		end
 
 		-- Reading rolls from chat
@@ -806,8 +807,9 @@ function SmokeyLootFrame_OnEvent()
 						index = k
 					end
 				end
-
-				print(format("%s was not in the raid list, fill their SR info ASAP!", player))
+				if SmokeyLoot_GetLootMasterName() == UnitName("player") then
+					print(format("%s was not in the raid list, fill their SR info ASAP!", player))
+				end
 				if SmokeyLootFrame:IsShown() then
 					SmokeyLootFrame_Update()
 				end
