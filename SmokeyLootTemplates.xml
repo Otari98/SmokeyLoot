@@ -26,7 +26,7 @@
 					</Anchors>
 				</FontString>
 				<FontString name="$parentColumn2" inherits="GameFontNormalSmall" justifyH="LEFT">
-				<Size x="100" y="13"/>
+					<Size x="100" y="13"/>
 					<Anchors>
 						<Anchor point="RIGHT">
 							<Offset x="-35" y="1"/>
@@ -34,7 +34,7 @@
 					</Anchors>
 				</FontString>
 				<FontString name="$parentColumn3" inherits="GameFontNormalSmall" justifyH="RIGHT">
-				<Size x="100" y="13"/>
+					<Size x="100" y="13"/>
 					<Anchors>
 						<Anchor point="RIGHT">
 							<Offset x="-2" y="1"/>
@@ -225,5 +225,15 @@
 	</Button>
 	<EditBox name="SmokeyLootEditBoxTemplate" inherits="InputBoxTemplate" virtual="true" autoFocus="false">
 		<Size x="180" y="22"/>
+		<Scripts>
+			<OnEditFocusLost>
+				this:HighlightText(0, 0)
+				SmokeyLootEditEntryFrame.editBoxInFocus = nil
+			</OnEditFocusLost>
+			<OnEditFocusGained>
+				this:HighlightText()
+				SmokeyLootEditEntryFrame.editBoxInFocus = this:GetID()
+			</OnEditFocusGained>
+		</Scripts>
 	</EditBox>
 </Ui>

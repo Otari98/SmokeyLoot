@@ -10,7 +10,14 @@
 			<TileSize val="32"/>
 			<EdgeSize val="16"/>
 			<BackgroundInsets left="5" right="5" top="5" bottom="5"/>
+			<Color r="0" g="0" b="0"/>
 		</Backdrop>
+		<!-- <Backdrop bgFile="Interface\RaidFrame\UI-RaidFrame-GroupBg" edgeFile="Interface\DialogFrame\UI-DialogBox-Border" tile="false">
+			<TileSize val="256"/>
+			<EdgeSize val="32"/>
+			<BackgroundInsets left="5" right="5" top="5" bottom="5"/>
+			<Color r="0.2" g="0.2" b="0.2" a="1"/>
+		</Backdrop> -->
 		<Layers>
 			<Layer level="ARTWORK">
 				<FontString name="SmokeyLootFrameDBDate" inherits="ChatFontNormal" justifyH="LEFT">
@@ -295,28 +302,40 @@
 					</OnLeave>
 				</Scripts>
 			</Button>
-			<Frame name="SmokeyLootEditEntryFrame" topLevel="true" hidden="true" enableMouse="true">
+			<Frame name="SmokeyLootEditEntryFrame" topLevel="true" hidden="true" enableMouse="true" movable="true">
 				<Size x="300" y="300"/>
-				<Backdrop bgFile="Interface\Buttons\WHITE8X8" tile="true">
-					<TileSize val="8"/>
-					<Color r="0" g="0" b="0" a="0.9"/>
+				<Backdrop bgFile="Interface\ItemTextFrame\ItemText-Stone-TopLeft" edgeFile="Interface\DialogFrame\UI-DialogBox-Border" tile="true">
+					<TileSize val="260"/>
+					<EdgeSize val="32"/>
+					<BackgroundInsets left="5" right="5" top="5" bottom="5"/>
+					<Color r="0.1" g="0.1" b="0.1" a="1"/>
 				</Backdrop>
 				<Anchors>
 					<Anchor point="CENTER"/>
 				</Anchors>
 				<Layers>
-					<Layer level="BACKGROUND">
-						<FontString name="$parentEntryIndex" inherits="GameFontNormal" justifyH="CENTER" text="Database Entry #">
+					<Layer level="ARTWORK">
+						<Texture file="Interface\DialogFrame\UI-DialogBox-Header">
+							<Size x="300" y="64"/>
 							<Anchors>
 								<Anchor point="TOP">
-									<Offset x="0" y="-2"/>
+									<Offset x="0" y="10"/>
+								</Anchor>	
+							</Anchors>
+						</Texture>
+					</Layer>
+					<Layer level="OVERLAY">
+						<FontString name="$parentEntryIndex" inherits="GameFontNormal" justifyH="CENTER" text="Database Entry">
+							<Anchors>
+								<Anchor point="TOP">
+									<Offset x="0" y="-4"/>
 								</Anchor>
 							</Anchors>
 						</FontString>
 						<FontString name="$parentItemName" inherits="GameFontNormal" justifyH="LEFT" text="Item:">
 							<Anchors>
 								<Anchor point="TOPLEFT">
-									<Offset x="8" y="-36"/>
+									<Offset x="14" y="-36"/>
 								</Anchor>
 							</Anchors>
 						</FontString>
@@ -345,6 +364,14 @@
 							<Anchors>
 								<Anchor point="TOPLEFT" relativeTo="$parentBonus" relativePoint="BOTTOMLEFT">
 									<Offset x="0" y="-17"/>
+								</Anchor>
+							</Anchors>
+						</FontString>
+						<FontString name="$parentHint" inherits="GameFontNormalSmall" justifyH="CENTER" text="Shift-click entries or chat links to copy paste values">
+							<Size x="256" y="64"/>
+							<Anchors>
+								<Anchor point="BOTTOM">
+									<Offset x="0" y="30"/>
 								</Anchor>
 							</Anchors>
 						</FontString>
@@ -386,7 +413,7 @@
 							</Anchor>
 						</Anchors>
 					</EditBox>
-					<EditBox name="$parentEditBox5" inherits="SmokeyLootEditBoxTemplate" id="4" numeric="true">
+					<EditBox name="$parentEditBox5" inherits="SmokeyLootEditBoxTemplate" id="5" numeric="true">
 						<Anchors>
 							<Anchor point="TOP" relativeTo="$parentEditBox4" relativePoint="BOTTOM">
 								<Offset x="0" y="-5"/>
@@ -397,7 +424,7 @@
 						<Size x="80" y="22"/>
 						<Anchors>
 							<Anchor point="BOTTOMRIGHT">
-								<Offset x="-5" y="5"/>
+								<Offset x="-12" y="12"/>
 							</Anchor>
 						</Anchors>
 						<Scripts>
@@ -423,7 +450,7 @@
 						<Size x="80" y="22"/>
 						<Anchors>
 							<Anchor point="BOTTOMLEFT">
-								<Offset x="5" y="5"/>
+								<Offset x="12" y="12"/>
 							</Anchor>
 						</Anchors>
 						<Scripts>
@@ -434,9 +461,18 @@
 					</Button>
 				</Frames>
 				<Scripts>
+					<OnLoad>
+						this:RegisterForDrag("LeftButton")
+					</OnLoad>
 					<OnHide>
 						SmokeyLootEditEntryFrame_OnHide()
 					</OnHide>
+					<OnDragStart>
+						this:StartMoving()
+					</OnDragStart>
+					<OnDragStop>
+						this:StopMovingOrSizing()
+					</OnDragStop>
 				</Scripts>
 			</Frame>
 		</Frames>
@@ -457,6 +493,9 @@
 					this:StopMovingOrSizing()
 				end
 			</OnDragStop>
+			<OnHide>
+				SmokeyLootEditEntryFrame:Hide()
+			</OnHide>
 		</Scripts>
 	</Frame>
 	<!-- Minimap Button -->
