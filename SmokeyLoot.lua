@@ -1386,33 +1386,42 @@ end
 
 function SmokeyLootEntry_OnClick()
 	if IsShiftKeyDown() then
-		if not (this.data and SmokeyLootEditEntryFrame:IsShown() and SmokeyLootEditEntryFrame.editBoxInFocus) then
+		if not (this.data and SmokeyLootEditEntryFrame:IsShown()) then
 			return
 		end
 		-- copy paste values
-		local editBoxID = SmokeyLootEditEntryFrame.editBoxInFocus
-		if editBoxID == 1 or editBoxID == 2 then
+		-- local editBoxID = SmokeyLootEditEntryFrame.editBoxInFocus
+		-- if editBoxID == 1 or editBoxID == 2 then
 			if this.data.item then
 				SmokeyLootEditEntryFrameEditBox1:SetText(this.data.item)
 			end
 			if this.data.itemID then
 				SmokeyLootEditEntryFrameEditBox2:SetNumber(this.data.itemID)
 			end
-		end
-		if this.data.char and editBoxID == 3 then
+		-- end
+		-- if this.data.char and editBoxID == 3 then
 			SmokeyLootEditEntryFrameEditBox3:SetText(this.data.char)
-		end
-		if this.data.bonus and editBoxID == 4 then
+		-- end
+		-- if this.data.bonus and editBoxID == 4 then
 			SmokeyLootEditEntryFrameEditBox4:SetText(this.data.bonus)
-		end
+		-- end
 	elseif CurrentTab == "database" or CurrentTab == "raid" then
 		SmokeyLoot_ToggleEditEntryFrame(this:GetID())
 	end
 end
 
+function SmokeyLoot_GetBonus(itemID, char)
+	for k, v in ipairs(SMOKEYLOOT.DATABASE) do
+		if v.itemID == tonumber(itemID) and v.char == char then
+			return v.bonus or 0
+		end
+	end
+	return nil
+end
+
 local __ChatFrame_OnHyperlinkShow = ChatFrame_OnHyperlinkShow
 ChatFrame_OnHyperlinkShow = function(link, text, button)
-	if not (IsShiftKeyDown() and SmokeyLootEditEntryFrame:IsShown() and SmokeyLootEditEntryFrame.editBoxInFocus) then
+	if not (IsShiftKeyDown() and SmokeyLootEditEntryFrame:IsShown()) then
 		return __ChatFrame_OnHyperlinkShow(link, text, button)
 	end
 	local name = strsub(link, 8)
@@ -1428,14 +1437,19 @@ ChatFrame_OnHyperlinkShow = function(link, text, button)
 		text = gsub(text, "|r", "")
 		_, _, itemName = strfind(text, "%[(.-)%]")
 	end
-	local editBoxID = SmokeyLootEditEntryFrame.editBoxInFocus
+	-- local editBoxID = SmokeyLootEditEntryFrame.editBoxInFocus
 	if itemName and itemID then
-		if editBoxID == 1 or editBoxID == 2 then
+		-- if editBoxID == 1 or editBoxID == 2 then
 			SmokeyLootEditEntryFrameEditBox1:SetText(strtrim(itemName))
 			SmokeyLootEditEntryFrameEditBox2:SetNumber(itemID)
-		end
-	elseif name and strlen(name) > 0 and editBoxID == 3 then
+		-- end
+	elseif name and strlen(name) > 0 then
 		SmokeyLootEditEntryFrameEditBox3:SetText(name)
+		local id = SmokeyLootEditEntryFrameEditBox2:GetNumber()
+		if id then
+			local bonus = SmokeyLoot_GetBonus(id, name) or 0
+			SmokeyLootEditEntryFrameEditBox4:SetText(bonus)
+		end
 	else
 		__ChatFrame_OnHyperlinkShow(link, text, button)
 	end
@@ -2267,6 +2281,7 @@ function SmokeyLoot_ToggleEditEntryFrame(id, add)
 	SmokeyLootEditEntryFrame:Show()
 	SmokeyLootEditEntryFrame.id = id
 	SmokeyLootEditEntryFrame.add = add
+	SmokeyLootEditEntryFrame.tab = CurrentTab
 
 	if CurrentTab == "database" then
 		if not IsOfficer(UnitName("player")) then
@@ -2313,6 +2328,7 @@ end
 function SmokeyLootEditEntryFrame_OnHide()
 	SmokeyLootEditEntryFrame.id = nil
 	SmokeyLootEditEntryFrame.add = nil
+	SmokeyLootEditEntryFrame.tab = nil
 	SmokeyLootFrame_Update()
 end
 
@@ -2325,14 +2341,14 @@ function SmokeyLootEditEntryFrameAcceptButton_OnClick()
 		print("You need to get latest database first.")
 		return
 	end
-	
+	local tab = SmokeyLootEditEntryFrame.tab
 	local id = SmokeyLootEditEntryFrame.id
 	local newItem = strtrim(SmokeyLootEditEntryFrameEditBox1:GetText())
 	local newItemID = SmokeyLootEditEntryFrameEditBox2:GetNumber()
 	local newChar = strtrim(SmokeyLootEditEntryFrameEditBox3:GetText())
 	local newBonus = tonumber(strtrim(SmokeyLootEditEntryFrameEditBox4:GetText()))
 	
-	if CurrentTab == "database" then
+	if tab == "database" then
 		if not IsOfficer(UnitName("player")) then
 			SmokeyLootEditEntryFrame:Hide()
 			return
@@ -2357,7 +2373,7 @@ function SmokeyLootEditEntryFrameAcceptButton_OnClick()
 		SmokeyLoot_SetRemoteVersion()
 		SmokeyLoot_UpdateHR()
 
-	elseif CurrentTab == "raid" then
+	elseif tab == "raid" then
 		if not IsMasterLooter() then
 			SmokeyLootEditEntryFrame:Hide()
 			return
