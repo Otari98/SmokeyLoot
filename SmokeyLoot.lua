@@ -7,9 +7,15 @@
 local _G = _G or getfenv(0)
 local concat = table.concat
 
-local MLSearchPattern = gsub(ERR_NEW_LOOT_MASTER_S, "%%s", "(.+)")
-local RollSearchPattern = gsub(gsub(RANDOM_ROLL_RESULT, "%%s", "(.+)"), "%%d %(%%d%-%%d%)", "(%%d+) %%(%%d%%-(%%d+)%%)")
+local Patterns = {
+	newMaster = gsub(ERR_NEW_LOOT_MASTER_S, "%%s", "(.+)"), -- "(.+) is now the loot master."
+	rollResult = gsub(gsub(RANDOM_ROLL_RESULT, "%%s", "(.+)"), "%%d %(%%d%-%%d%)", "(%%d+) %%(%%d%%-(%%d+)%%)"), -- "(.+) rolls (%d+) %((%d+)%-(%d+)%)"
+	memberJoined = gsub(ERR_RAID_MEMBER_ADDED_S, "%%s", "(.+)"), -- "(.+) has joined the raid group"
+	memberLeft = gsub(ERR_RAID_MEMBER_REMOVED_S, "%%s", "(.+)"), -- "(.+) has left the raid group"
+}
+
 local CurrentTab = "database"
+local CurrentLootSource = nil
 
 SmokeyItem = {}
 
@@ -25,6 +31,7 @@ SmokeyItem.Reset = function()
 	SmokeyItem.tmogIgnored = nil
 	SmokeyItem.lowestPlus = 420
 	SmokeyItem.lowestHR = 420
+	SmokeyItem.lootSource = nil
 end
 
 SmokeyItem.Reset()
@@ -735,7 +742,7 @@ function SmokeyLootFrame_OnEvent()
 		debug(event, "master:", Master, "isMLmethod:", isMLmethod)
 		
 	elseif event == "CHAT_MSG_SYSTEM" then
-		local _, _, m = strfind(arg1, MLSearchPattern)
+		local _, _, m = strfind(arg1, Patterns.newMaster)
 
 		if m then
 			Master = m
@@ -744,12 +751,44 @@ function SmokeyLootFrame_OnEvent()
 			return
 		end
 
+		local _, _, joined = strfind(arg1, Patterns.memberJoined)
+		-- local _, _, left = strfind(arg1, Patterns.memberLeft)
+		if joined then
+			if not IsMasterLooter() then
+				return
+			end
+
+			for k, v in ipairs(SMOKEYLOOT.RAID) do
+				if v.char == joined then
+					return
+				end
+			end
+
+			tinsert(SMOKEYLOOT.RAID, {
+				item = "",
+				bonus = 0,
+				itemID = 0,
+				char = joined,
+				pluses = 0,
+			})
+			sort(SMOKEYLOOT.RAID, sortfunc)
+			SmokeyLoot_PushRaid()
+
+			print(format("%s was not in the raid list, fill their SR info ASAP!", joined))
+
+			if SmokeyLootFrame:IsShown() then
+				SmokeyLootFrame_Update()
+			end
+
+			return
+		end
+
 		-- Reading rolls from chat
 		if not SmokeyItem.id then
 			return
 		end
 
-		local _, _, player, roll, max = strfind(arg1, RollSearchPattern)
+		local _, _, player, roll, max = strfind(arg1, Patterns.rollResult)
 		roll, max = tonumber(roll), tonumber(max)
 
 		debug(event, "player:", player, "roll:", roll, "max:", max, "AlreadyRolled:", AlreadyRolled[player])
@@ -900,6 +939,10 @@ function SmokeyLootFrame_OnEvent()
 		end
 
 	elseif event == "OPEN_MASTER_LOOT_LIST" or event == "LOOT_OPENED" then
+		if event == "LOOT_OPENED" then
+			_, CurrentLootSource = UnitExists("target")
+		end
+
 		local isMLmethod
 		Master, isMLmethod = SmokeyLoot_GetLootMasterName()
 
@@ -917,6 +960,7 @@ function SmokeyLootFrame_OnEvent()
 		end
 
 	elseif event == "LOOT_CLOSED" then
+		CurrentLootSource = nil
 		SmokeyLootMLFrame:Hide()
 
 	elseif event == "LOOT_SLOT_CLEARED" then
@@ -924,7 +968,7 @@ function SmokeyLootFrame_OnEvent()
 			debug(event, "SmokeyItem.link:", SmokeyItem.link)
 		end
 
-		if arg1 == SmokeyItem.slot then
+		if arg1 == SmokeyItem.slot and SmokeyItem.lootSource == CurrentLootSource then
 			for i = 1, getn(SMOKEYLOOT.RAID) do
 				if SMOKEYLOOT.RAID[i].char == SmokeyItem.winner then
 					if SmokeyItem.winType == "MS" then
@@ -1123,7 +1167,9 @@ function SmokeyLootFrame_OnEvent()
 					Pulling = false
 
 					SmokeyLootFrameProgressBar:Hide()
-					SmokeyLootVersionCheckButton:Show()
+					if CurrentTab ~= "raid" then
+						SmokeyLootVersionCheckButton:Show()
+					end
 					SmokeyLootVersionCheckButton:Enable()
 
 					if PushAfter then
@@ -1187,8 +1233,6 @@ function SmokeyLootFrame_Update()
 				tinsert(SearchResult, i)
 			end
 		end
-	
-		SmokeyLootScrollFrame:SetVerticalScroll(0)
 	end
 
 	local offset = FauxScrollFrame_GetOffset(SmokeyLootScrollFrame) or 0
@@ -1244,6 +1288,7 @@ function SmokeyLootFrame_Update()
 
 			itemColumn:SetText(itemName or item or "")
 			itemColumn:SetTextColor(r, g, b)
+			itemColumn:SetWidth(char and 200 or 0)
 			charColumn:SetText(char)
 			icon:SetTexture(itemTexture or "")
 			icon:Show()
@@ -1291,9 +1336,11 @@ function SmokeyLootFrame_Update()
 		if SMOKEYLOOT.DATABASE.date >= SmokeyLoot_GetRemoteVersion() then
 			SmokeyLootFrameStatus:SetText("Latest")
 			SmokeyLootFrameStatus:SetTextColor(GREEN_FONT_COLOR.r, GREEN_FONT_COLOR.g, GREEN_FONT_COLOR.b)
+			SmokeyLootVersionCheckButton:Disable()
 		else
 			SmokeyLootFrameStatus:SetText("Outdated")
 			SmokeyLootFrameStatus:SetTextColor(RED_FONT_COLOR.r, RED_FONT_COLOR.g, RED_FONT_COLOR.b)
+			SmokeyLootVersionCheckButton:Enable()
 		end
 	end
 end
@@ -1554,7 +1601,7 @@ function SmokeyLoot_GetWinner()
 
 	if next(Rolls.HR) then
 		for k, v in pairs(Rolls.HR) do
-			if v >= SmokeyItem.winRoll then
+			if v > SmokeyItem.winRoll then
 				SmokeyItem.winRoll = v
 				SmokeyItem.winner = k
 				SmokeyItem.winType = "HR"
@@ -1562,7 +1609,7 @@ function SmokeyLoot_GetWinner()
 		end
 	elseif next(Rolls.SR) then
 		for k, v in pairs(Rolls.SR) do
-			if v >= SmokeyItem.winRoll then
+			if v > SmokeyItem.winRoll then
 				SmokeyItem.winRoll = v
 				SmokeyItem.winner = k
 				SmokeyItem.winType = "SR"
@@ -1572,7 +1619,7 @@ function SmokeyLoot_GetWinner()
 		DiscardAltRolls("MS")
 		DiscardLowRankRolls("MS")
 		for k, v in pairs(Rolls.MS) do
-			if v >= SmokeyItem.winRoll then
+			if v > SmokeyItem.winRoll then
 				SmokeyItem.winRoll = v
 				SmokeyItem.winner = k
 				SmokeyItem.winType = "MS"
@@ -1582,7 +1629,7 @@ function SmokeyLoot_GetWinner()
 		DiscardAltRolls("OS")
 		DiscardLowRankRolls("OS")
 		for k, v in pairs(Rolls.OS) do
-			if v >= SmokeyItem.winRoll then
+			if v > SmokeyItem.winRoll then
 				SmokeyItem.winRoll = v
 				SmokeyItem.winner = k
 				SmokeyItem.winType = "OS"
@@ -1591,7 +1638,7 @@ function SmokeyLoot_GetWinner()
 	elseif next(Rolls.TMOG) then
 		DiscardAltRolls("TMOG")
 		for k, v in pairs(Rolls.TMOG) do
-			if v >= SmokeyItem.winRoll then
+			if v > SmokeyItem.winRoll then
 				SmokeyItem.winRoll = v
 				SmokeyItem.winner = k
 				SmokeyItem.winType = "TMOG"
@@ -1601,13 +1648,20 @@ function SmokeyLoot_GetWinner()
 
 	if SmokeyItem.winner and next(Rolls.TMOG) then
 		for k, v in pairs(Rolls.TMOG) do
-			if v >= SmokeyItem.tmogWinRoll and k ~= SmokeyItem.winner then
+			if v > SmokeyItem.tmogWinRoll and k ~= SmokeyItem.winner then
 				SmokeyItem.tmogWinRoll = v
 				SmokeyItem.tmogWinner = k
 			end
 		end
 	end
-
+	if SmokeyItem.winner then
+		-- check if someone else had the same roll
+		for k, v in pairs(Rolls[SmokeyItem.winType]) do
+			if k ~= SmokeyItem.winner and v == SmokeyItem.winRoll then
+				
+			end
+		end
+	end
 	debug("winner:", SmokeyItem.winner, "tmogWinner:", SmokeyItem.tmogWinner)
 end
 
@@ -1631,6 +1685,7 @@ function SmokeyLoot_StartOrEndRoll()
 		SmokeyItem.link = link
 		SmokeyItem.lowestPlus = 420
 		SmokeyItem.lowestHR = 420
+		SmokeyItem.lootSource = CurrentLootSource
 		
 		listwipe(Rolls)
 		arraywipe(SRCandidates)
@@ -1661,6 +1716,7 @@ function SmokeyLoot_StartOrEndRoll()
 	else
 		-- End Roll
 		if not SmokeyItem.winner and not SmokeyItem.tmogWinner then
+			SmokeyLoot_CancelRoll()
 			return
 		end
 
@@ -1744,7 +1800,7 @@ function SmokeyLootMLFrame_Update()
 				end
 				
 				if SmokeyItem.id then
-					if SmokeyItem.id == id then
+					if SmokeyItem.id == id and SmokeyItem.lootSource == CurrentLootSource then
 						SmokeyItem.slot = i
 						if SmokeyItem.winner then
 							winnerText:SetText(SmokeyItem.winner.." ("..SmokeyItem.winType..")")

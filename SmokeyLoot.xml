@@ -148,6 +148,7 @@
 					</OnEnterPressed>
 					<OnTextChanged>
 						SmokeyLootFrame_Update()
+						SmokeyLootScrollFrame:SetVerticalScroll(0)
 					</OnTextChanged>
 					<OnEscapePressed>
 						this:ClearFocus()
