@@ -104,8 +104,10 @@ local TransmogInvTypes = {
 local axes, axes2H, bows, guns, maces, maces2H, polearms, swords, swords2H, staves, fists, miscellaneous, daggers, thrown, crossbows, wands, fishingPole = GetAuctionItemSubClasses(1)
 local miscellaneous, cloth, leather, mail, plate, shields, librams, idols, totems = GetAuctionItemSubClasses(2)
 local weapon, armor, container, consumable, tradeGoods, projectile, quiver, recipe, reagent, miscellaneous =  GetAuctionItemClasses(1)
+local book, leatherworking, tailoring, engineering, blacksmithing, cooking, alchemy, firstaid, enchanting, fishing, jewelcrafting = GetAuctionItemSubClasses(8)
 
 local L = {
+	["Book"] = book,
 	["Cloth"] = cloth,
 	["Leather"] = leather,
 	["Mail"] = mail,
@@ -1574,8 +1576,12 @@ local function DiscardLowRankRolls(rollType)
 	end
 
 	local itemName, itemLink, itemQuality, itemLevel, itemType, itemSubType, itemCount, itemEquipLoc, itemTexture = GetItemInfo(SmokeyItem.id)
-	
+
 	if itemType ~= L["Recipe"] and not RankPrioItems[SmokeyItem.id] then
+		return
+	end
+
+	if itemSubType == L["Book"] then
 		return
 	end
 
