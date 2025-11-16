@@ -2,7 +2,6 @@
 -- ban ms rolls on resistance gear (?)
 -- do something about loot from chests (?)
 -- add popup confirmation
--- make manual edits less annoying
 
 local _G = _G or getfenv(0)
 local concat = table.concat
@@ -17,29 +16,10 @@ local Patterns = {
 local CurrentTab = "database"
 local CurrentLootSource = nil
 
-SmokeyItem = {}
-
-SmokeyItem.Reset = function()
-	SmokeyItem.id = nil
-	SmokeyItem.link = nil
-	SmokeyItem.slot = nil
-	SmokeyItem.winner = nil
-	SmokeyItem.winType = nil
-	SmokeyItem.winRoll = 0
-	SmokeyItem.tmogWinner = nil
-	SmokeyItem.tmogWinRoll = 0
-	SmokeyItem.tmogIgnored = nil
-	SmokeyItem.lowestPlus = 420
-	SmokeyItem.lowestHR = 420
-	SmokeyItem.lootSource = nil
-end
-
-SmokeyItem.Reset()
-
 local Master
 local Pusher
 
-local debugMessages = false
+local debugMessages = true
 local Pulling = false
 local Pushing = false
 local PushAfter = false
@@ -92,6 +72,9 @@ Rolls.SR = {}
 Rolls.MS = {}
 Rolls.OS = {}
 Rolls.TMOG = {}
+
+local Rerolls = {}
+local RerollsTmog = {}
 
 local SmokeyAddonVersions = {}
 
@@ -312,6 +295,10 @@ print = print or function(...)
 	return msg
 end
 
+local function slmsg(message)
+	DEFAULT_CHAT_FRAME:AddMessage("|cffabd473[SmokeyLoot]|r "..tostring(message))
+end
+
 local debug = function(...)
 	if not debugMessages then
 		return
@@ -432,6 +419,27 @@ function GetItemIDByName(name)
 	IDCache[name][2] = name
 	return -1, name
 end
+
+SmokeyItem = {}
+
+function SmokeyItem:Reset()
+	self.id = nil
+	self.link = nil
+	self.slot = nil
+	self.winner = nil
+	self.winType = nil
+	self.winRoll = 0
+	self.tmogWinner = nil
+	self.tmogWinRoll = 0
+	self.tmogIgnored = nil
+	self.lowestPlus = 420
+	self.lowestHR = 420
+	self.lootSource = nil
+	arraywipe(Rerolls)
+	arraywipe(RerollsTmog)
+end
+
+SmokeyItem:Reset()
 
 local ScanTooltip = CreateFrame("GameTooltip", "SmokeyLootScanTooltip", nil, "GameTooltipTemplate")
 ScanTooltip:SetOwner(WorldFrame, "ANCHOR_NONE")
@@ -730,7 +738,6 @@ function SmokeyLootFrame_OnEvent()
 		SmokeyLoot_EnableRaidControls()
 
 	elseif event == "RAID_ROSTER_UPDATE" then
-		-- TODO: add new raid member without SR detection ?
 		SmokeyLoot_UpdateRollers()
 		
 	elseif event == "PLAYER_ENTERING_WORLD" then
@@ -774,7 +781,7 @@ function SmokeyLootFrame_OnEvent()
 			sort(SMOKEYLOOT.RAID, sortfunc)
 			SmokeyLoot_PushRaid()
 
-			print(format("%s was not in the raid list, fill their SR info ASAP!", joined))
+			slmsg(format("%s was not in the raid list, fill their SR info ASAP!", joined))
 
 			if SmokeyLootFrame:IsShown() then
 				SmokeyLootFrame_Update()
@@ -830,7 +837,7 @@ function SmokeyLootFrame_OnEvent()
 					end
 				end
 				if IsMasterLooter() then
-					print(format("%s was not in the raid list, fill their SR info ASAP!", player))
+					slmsg(format("%s was not in the raid list, fill their SR info ASAP!", player))
 				end
 				if SmokeyLootFrame:IsShown() then
 					SmokeyLootFrame_Update()
@@ -886,7 +893,7 @@ function SmokeyLootFrame_OnEvent()
 				end
 
 				if not canRollMS and IsMasterLooter() then
-					print(player.." can not roll MS.")
+					slmsg(player.." can not roll MS.")
 					return
 				end
 
@@ -922,7 +929,7 @@ function SmokeyLootFrame_OnEvent()
 				end
 
 				if not canRollTransmog and IsMasterLooter() then
-					print(player.." can not roll Transmog.")
+					slmsg(player.." can not roll Transmog.")
 					return
 				end
 
@@ -1005,7 +1012,7 @@ function SmokeyLootFrame_OnEvent()
 				end
 			end
 
-			SmokeyItem.Reset()
+			SmokeyItem:Reset()
 			SmokeyLoot_UpdateRollers()
 			SmokeyLoot_PushRaid()
 		end
@@ -1064,6 +1071,7 @@ function SmokeyLootFrame_OnEvent()
 				-- ending roll, hide popup
 				SmokeyLootPopupFrame:Hide()
 				SmokeyLoot_UpdateRollers()
+				SmokeyItem:Reset()
 
 			elseif player ~= UnitName("player") then
 				if message == "REPORT_ADDON_VERSION" then
@@ -1548,7 +1556,7 @@ local function DiscardAltRolls(rollType)
 				-- discard Swab Toker roll if not a bongo alt
 				if not IsBongoAlt(k2) and SMOKEYLOOT.GUILD[k2].rankIndex == 6 then
 					if IsMasterLooter() then
-						print("alt roll discarded:", k2, v2)
+						slmsg(format("Alt roll discarded: %s %d", k2, v2))
 					end
 					Rolls[rollType][k2] = nil
 				end
@@ -1585,7 +1593,7 @@ local function DiscardLowRankRolls(rollType)
 	for k, v in pairs(Rolls[rollType]) do
 		if SMOKEYLOOT.GUILD[k] and tonumber(SMOKEYLOOT.GUILD[k].rankIndex) > highestRank then
 			if IsMasterLooter() then
-				print("discarded low rank roll:", k, v)
+				slmsg(format("Discarded low rank roll: %s %d", k, v))
 			end
 			Rolls[rollType][k] = nil
 		end
@@ -1605,6 +1613,7 @@ function SmokeyLoot_GetWinner()
 				SmokeyItem.winRoll = v
 				SmokeyItem.winner = k
 				SmokeyItem.winType = "HR"
+				arraywipe(Rerolls)
 			end
 		end
 	elseif next(Rolls.SR) then
@@ -1613,6 +1622,7 @@ function SmokeyLoot_GetWinner()
 				SmokeyItem.winRoll = v
 				SmokeyItem.winner = k
 				SmokeyItem.winType = "SR"
+				arraywipe(Rerolls)
 			end
 		end
 	elseif next(Rolls.MS) then
@@ -1623,6 +1633,7 @@ function SmokeyLoot_GetWinner()
 				SmokeyItem.winRoll = v
 				SmokeyItem.winner = k
 				SmokeyItem.winType = "MS"
+				arraywipe(Rerolls)
 			end
 		end
 	elseif next(Rolls.OS) then
@@ -1633,6 +1644,7 @@ function SmokeyLoot_GetWinner()
 				SmokeyItem.winRoll = v
 				SmokeyItem.winner = k
 				SmokeyItem.winType = "OS"
+				arraywipe(Rerolls)
 			end
 		end
 	elseif next(Rolls.TMOG) then
@@ -1642,6 +1654,7 @@ function SmokeyLoot_GetWinner()
 				SmokeyItem.winRoll = v
 				SmokeyItem.winner = k
 				SmokeyItem.winType = "TMOG"
+				arraywipe(Rerolls)
 			end
 		end
 	end
@@ -1651,15 +1664,35 @@ function SmokeyLoot_GetWinner()
 			if v > SmokeyItem.tmogWinRoll and k ~= SmokeyItem.winner then
 				SmokeyItem.tmogWinRoll = v
 				SmokeyItem.tmogWinner = k
+				arraywipe(RerollsTmog)
 			end
 		end
 	end
 	if SmokeyItem.winner then
 		-- check if someone else had the same roll
 		for k, v in pairs(Rolls[SmokeyItem.winType]) do
-			if k ~= SmokeyItem.winner and v == SmokeyItem.winRoll then
-				
+			if v == SmokeyItem.winRoll then
+				debug("Rerolls", k, v)
+				tinsert(Rerolls, k)
 			end
+		end
+		if getn(Rerolls) > 1 then
+			SmokeyItem.winner = Rerolls[random(1, getn(Rerolls))]
+			slmsg(format("Auto rerolling for %s . . .", concat(Rerolls, ", ")))
+			slmsg(foramt("Winner: %s (%s)", SmokeyItem.winner, SmokeyItem.winType))
+		end
+	end
+	if SmokeyItem.tmogWinner then
+		for k, v in pairs(Rolls.TMOG) do
+			if v == SmokeyItem.tmogWinRoll and k ~= SmokeyItem.winner then
+				debug("RerollsTmog",k,v)
+				tinsert(RerollsTmog, k)
+			end
+		end
+		if getn(RerollsTmog) > 1 then
+			SmokeyItem.tmogWinner = RerollsTmog[random(1, getn(RerollsTmog))]
+			slmsg(format("Auto rerolling for %s . . .", concat(RerollsTmog, ", ")))
+			slmsg(format("Transmog winner: %s", SmokeyItem.tmogWinner))
 		end
 	end
 	debug("winner:", SmokeyItem.winner, "tmogWinner:", SmokeyItem.tmogWinner)
@@ -1688,6 +1721,8 @@ function SmokeyLoot_StartOrEndRoll()
 		SmokeyItem.lootSource = CurrentLootSource
 		
 		listwipe(Rolls)
+		arraywipe(Rerolls)
+		arraywipe(RerollsTmog)
 		arraywipe(SRCandidates)
 		arraywipe(Candidates)
 
@@ -1747,7 +1782,7 @@ end
 
 function SmokeyLoot_CancelRoll()
 	SendAddonMessage("SmokeyLoot", "EndRoll", "RAID")
-	SmokeyItem.Reset()
+	SmokeyItem:Reset()
 	SmokeyLootMLFrame_Update()
 end
 
@@ -1805,7 +1840,7 @@ function SmokeyLootMLFrame_Update()
 						if SmokeyItem.winner then
 							winnerText:SetText(SmokeyItem.winner.." ("..SmokeyItem.winType..")")
 							if SmokeyItem.tmogWinner and not SmokeyLootMLFrameIgnoreTmog:GetChecked() then
-								winnerText:SetText(SmokeyItem.tmogWinner.." (Tmog)->"..winnerText:GetText())
+								winnerText:SetText(SmokeyItem.tmogWinner.." (TMOG)->"..winnerText:GetText())
 							end
 						end
 						toggleButton:SetText("End Roll")
@@ -1978,7 +2013,7 @@ function SmokeyLoot_SwitchTab(switchTo)
 end
 
 function SmokeyLoot_FinishRaidRoutine()
-	print("Finishing raid.")
+	slmsg("Finishing raid.")
 
 	-- TODO: rewrite for confirmation popup
 	for i = getn(SMOKEYLOOT.RAID), 1, -1 do
@@ -2031,7 +2066,7 @@ function SmokeyLoot_FinishRaidRoutine()
 	end
 
 	-- RAID now should only contain people who need to get +10 bonus (or get on HR list)
-	print("Following players got +10:")
+	slmsg("Following players got +10:")
 
 	for k, v in ipairs(SMOKEYLOOT.RAID) do
 		local newBonus = v.bonus + 10
@@ -2079,7 +2114,7 @@ function SmokeyLoot_FinishRaidRoutine()
 			end
 		end
 
-		print(format("%s %d %s %d -> %d", v.item, v.itemID, v.char, v.bonus, newBonus))
+		slmsg(format("%s %d %s %d -> %d", v.item, v.itemID, v.char, v.bonus, newBonus))
 	end
 
 	arraywipe(SMOKEYLOOT.RAID)
@@ -2090,7 +2125,7 @@ function SmokeyLoot_FinishRaidRoutine()
 	SmokeyLoot_UpdateHR()
 	SmokeyLootFrame_Update()
 
-	print("New date "..date("%d/%m/%y %H:%M:%S", SMOKEYLOOT.DATABASE.date))
+	slmsg("New date "..date("%d/%m/%y %H:%M:%S", SMOKEYLOOT.DATABASE.date))
 end
 
 function SmokeyLootFinishRaidButton_OnClick()
@@ -2226,7 +2261,7 @@ function SmokeyLoot_Cleanup()
 	end
 
 	if SMOKEYLOOT.DATABASE.date < SmokeyLoot_GetRemoteVersion() then
-		print("You need to get latest database first.")
+		slmsg("You need to get latest database first.")
 		return
 	end
 
@@ -2330,7 +2365,7 @@ function SmokeyLoot_ToggleEditEntryFrame(id, add)
 	end
 
 	if SMOKEYLOOT.DATABASE.date < SmokeyLoot_GetRemoteVersion() then
-		print("You need to get latest database first.")
+		slmsg("You need to get latest database first.")
 		return
 	end
 	
@@ -2394,7 +2429,7 @@ end
 
 function SmokeyLootEditEntryFrameAcceptButton_OnClick()
 	if SMOKEYLOOT.DATABASE.date < SmokeyLoot_GetRemoteVersion() then
-		print("You need to get latest database first.")
+		slmsg("You need to get latest database first.")
 		return
 	end
 	local tab = SmokeyLootEditEntryFrame.tab
@@ -2412,7 +2447,7 @@ function SmokeyLootEditEntryFrameAcceptButton_OnClick()
 		if SmokeyLootEditEntryFrame.add then
 			for k, v in ipairs(SMOKEYLOOT.DATABASE) do
 				if v.char == newChar and v.itemID == newItemID then
-					print("Such entry already exists.")
+					slmsg("Such entry already exists.")
 					return
 				end
 			end
@@ -2439,7 +2474,7 @@ function SmokeyLootEditEntryFrameAcceptButton_OnClick()
 		if SmokeyLootEditEntryFrame.add then
 			for k, v in ipairs(SMOKEYLOOT.RAID) do
 				if v.char == newChar and v.itemID == newItemID then
-					print("Such entry already exists.")
+					slmsg("Such entry already exists.")
 					return
 				end
 			end
@@ -2476,7 +2511,7 @@ end
 function SmokeyLootEditEntryFrameDeleteButton_OnClick()
 	if CurrentTab == "database" and IsOfficer(UnitName("player")) then
 		if SMOKEYLOOT.DATABASE.date < SmokeyLoot_GetRemoteVersion() then
-			print("You need to get latest database first.")
+			slmsg("You need to get latest database first.")
 			return
 		end
 		tremove(SMOKEYLOOT.DATABASE, SmokeyLootEditEntryFrame.id)
@@ -2608,7 +2643,7 @@ SLASH_SMOKEYLOOT1 = "/sloot"
 SlashCmdList.SMOKEYLOOT = function(cmd)
 	if cmd == "versions" then
 		if GetNumRaidMembers() == 0 then
-			print("You need to be in a raid group to query addon version.")
+			slmsg("You need to be in a raid group to query addon version.")
 			return
 		end
 
@@ -2618,7 +2653,7 @@ SlashCmdList.SMOKEYLOOT = function(cmd)
 			SmokeyAddonVersions[GetRaidRosterInfo(i)] = -1
 		end
 
-		print("Starting addon version check.")
+		slmsg("Starting addon version check.")
 
 		SendAddonMessage("SmokeyLoot", "REPORT_ADDON_VERSION", "RAID")
 
@@ -2643,14 +2678,14 @@ SlashCmdList.SMOKEYLOOT = function(cmd)
 				end
 			end
 
-			print(format("Did not report: %s\nOutdated: %s\nSame version: %s\nHigher version: %s", noAddon, outdated, same, higher))
+			slmsg(format("Did not report: %s\nOutdated: %s\nSame version: %s\nHigher version: %s", noAddon, outdated, same, higher))
 		end)
 
 	elseif cmd == "debug" then
 		debugMessages = not debugMessages
-		print("debug messages: "..tostring(debugMessages))
+		slmsg("debug messages: "..tostring(debugMessages))
 
 	else
-		print("/sloot versions - query raid members addon version\n/sloot debug - toggle debug messages")
+		slmsg("/sloot versions - query raid members addon version\n/sloot debug - toggle debug messages")
 	end
 end
