@@ -19,7 +19,7 @@ local CurrentLootSource = nil
 local Master
 local Pusher
 
-local debugMessages = true
+local debugMessages = false
 local Pulling = false
 local Pushing = false
 local PushAfter = false
