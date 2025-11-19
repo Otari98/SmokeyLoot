@@ -863,7 +863,7 @@
 					</OnLeave>
 					<OnClick>
 						SmokeyLootMLFrame_Update()
-						PlayClickSound()
+						PlaySound("igMainMenuOptionCheckBoxOn")
 					</OnClick>
 				</Scripts>
 			</CheckButton>

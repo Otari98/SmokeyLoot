@@ -26,6 +26,8 @@ local PushAfter = false
 
 local LootButtonsMax = 6
 local MaxEntries = 32
+-- rerollsMessage = 0
+-- tmogRerollsMessage = 0
 
 local SearchResult = {}
 local AlreadyRolled = {}
@@ -73,8 +75,8 @@ Rolls.MS = {}
 Rolls.OS = {}
 Rolls.TMOG = {}
 
-local Rerolls = {}
-local RerollsTmog = {}
+-- local Rerolls = {}
+-- local RerollsTmog = {}
 
 local SmokeyAddonVersions = {}
 
@@ -437,8 +439,11 @@ function SmokeyItem:Reset()
 	self.lowestPlus = 420
 	self.lowestHR = 420
 	self.lootSource = nil
-	arraywipe(Rerolls)
-	arraywipe(RerollsTmog)
+	-- arraywipe(Rerolls)
+	-- arraywipe(RerollsTmog)
+	-- rerollsMessage = 0
+	-- tmogRerollsMessage = 0
+	debug("SmokeyItem:Reset()")
 end
 
 SmokeyItem:Reset()
@@ -1619,7 +1624,7 @@ function SmokeyLoot_GetWinner()
 				SmokeyItem.winRoll = v
 				SmokeyItem.winner = k
 				SmokeyItem.winType = "HR"
-				arraywipe(Rerolls)
+				-- arraywipe(Rerolls)
 			end
 		end
 	elseif next(Rolls.SR) then
@@ -1628,7 +1633,7 @@ function SmokeyLoot_GetWinner()
 				SmokeyItem.winRoll = v
 				SmokeyItem.winner = k
 				SmokeyItem.winType = "SR"
-				arraywipe(Rerolls)
+				-- arraywipe(Rerolls)
 			end
 		end
 	elseif next(Rolls.MS) then
@@ -1639,7 +1644,7 @@ function SmokeyLoot_GetWinner()
 				SmokeyItem.winRoll = v
 				SmokeyItem.winner = k
 				SmokeyItem.winType = "MS"
-				arraywipe(Rerolls)
+				-- arraywipe(Rerolls)
 			end
 		end
 	elseif next(Rolls.OS) then
@@ -1650,7 +1655,7 @@ function SmokeyLoot_GetWinner()
 				SmokeyItem.winRoll = v
 				SmokeyItem.winner = k
 				SmokeyItem.winType = "OS"
-				arraywipe(Rerolls)
+				-- arraywipe(Rerolls)
 			end
 		end
 	elseif next(Rolls.TMOG) then
@@ -1660,7 +1665,7 @@ function SmokeyLoot_GetWinner()
 				SmokeyItem.winRoll = v
 				SmokeyItem.winner = k
 				SmokeyItem.winType = "TMOG"
-				arraywipe(Rerolls)
+				-- arraywipe(Rerolls)
 			end
 		end
 	end
@@ -1670,37 +1675,42 @@ function SmokeyLoot_GetWinner()
 			if v > SmokeyItem.tmogWinRoll and k ~= SmokeyItem.winner then
 				SmokeyItem.tmogWinRoll = v
 				SmokeyItem.tmogWinner = k
-				arraywipe(RerollsTmog)
+				-- arraywipe(RerollsTmog)
 			end
 		end
 	end
-	if SmokeyItem.winner then
-		-- check if someone else had the same roll
-		for k, v in pairs(Rolls[SmokeyItem.winType]) do
-			if v == SmokeyItem.winRoll then
-				debug("Rerolls", k, v)
-				tinsert(Rerolls, k)
-			end
-		end
-		if getn(Rerolls) > 1 then
-			SmokeyItem.winner = Rerolls[random(1, getn(Rerolls))]
-			slmsg(format("Auto rerolling for %s . . .", concat(Rerolls, ", ")))
-			slmsg(foramt("Winner: %s (%s)", SmokeyItem.winner, SmokeyItem.winType))
-		end
-	end
-	if SmokeyItem.tmogWinner then
-		for k, v in pairs(Rolls.TMOG) do
-			if v == SmokeyItem.tmogWinRoll and k ~= SmokeyItem.winner then
-				debug("RerollsTmog",k,v)
-				tinsert(RerollsTmog, k)
-			end
-		end
-		if getn(RerollsTmog) > 1 then
-			SmokeyItem.tmogWinner = RerollsTmog[random(1, getn(RerollsTmog))]
-			slmsg(format("Auto rerolling for %s . . .", concat(RerollsTmog, ", ")))
-			slmsg(format("Transmog winner: %s", SmokeyItem.tmogWinner))
-		end
-	end
+	-- if not IsMasterLooter() then
+	-- 	return
+	-- end
+	-- -- check if someone else had the same roll
+	-- if SmokeyItem.winner then
+	-- 	for k, v in pairs(Rolls[SmokeyItem.winType]) do
+	-- 		if v ~= SmokeyItem.winRoll then
+	-- 			debug("Rerolls", k, v)
+	-- 			tinsert(Rerolls, k)
+	-- 		end
+	-- 	end
+	-- 	if getn(Rerolls) > 1 and getn(Rerolls) > rerollsMessage then
+	-- 		SmokeyItem.winner = Rerolls[random(1, getn(Rerolls))]
+	-- 		slmsg(format("Auto rerolling for %s . . .", concat(Rerolls, ", ")))
+	-- 		slmsg(format("Winner: %s (%s)", SmokeyItem.winner, SmokeyItem.winType))
+	-- 		rerollsMessage = getn(Rerolls)
+	-- 	end
+	-- end
+	-- if SmokeyItem.tmogWinner then
+	-- 	for k, v in pairs(Rolls.TMOG) do
+	-- 		if v == SmokeyItem.tmogWinRoll and k ~= SmokeyItem.winner then
+	-- 			debug("RerollsTmog",k,v)
+	-- 			tinsert(RerollsTmog, k)
+	-- 		end
+	-- 	end
+	-- 	if getn(RerollsTmog) > 1 and getn(RerollsTmog) > tmogRerollsMessage then
+	-- 		SmokeyItem.tmogWinner = RerollsTmog[random(1, getn(RerollsTmog))]
+	-- 		slmsg(format("Auto rerolling for %s . . .", concat(RerollsTmog, ", ")))
+	-- 		slmsg(format("Transmog winner: %s", SmokeyItem.tmogWinner))
+	-- 		tmogRerollsMessage = getn(RerollsTmog)
+	-- 	end
+	-- end
 	debug("winner:", SmokeyItem.winner, "tmogWinner:", SmokeyItem.tmogWinner)
 end
 
@@ -1727,8 +1737,8 @@ function SmokeyLoot_StartOrEndRoll()
 		SmokeyItem.lootSource = CurrentLootSource
 		
 		listwipe(Rolls)
-		arraywipe(Rerolls)
-		arraywipe(RerollsTmog)
+		-- arraywipe(Rerolls)
+		-- arraywipe(RerollsTmog)
 		arraywipe(SRCandidates)
 		arraywipe(Candidates)
 
@@ -1788,7 +1798,6 @@ end
 
 function SmokeyLoot_CancelRoll()
 	SendAddonMessage("SmokeyLoot", "EndRoll", "RAID")
-	SmokeyItem:Reset()
 	SmokeyLootMLFrame_Update()
 end
 
