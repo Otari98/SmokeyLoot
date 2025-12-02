@@ -5,6 +5,13 @@
 
 local _G = _G or getfenv(0)
 local concat = table.concat
+local format = string.format
+local strfind = string.find
+local strsub = string.sub
+local gsub = string.gsub
+local getn = table.getn
+local tinsert = table.insert
+local tremove = table.remove
 
 local Patterns = {
 	newMaster = gsub(ERR_NEW_LOOT_MASTER_S, "%%s", "(.+)"), -- "(.+) is now the loot master."
@@ -1798,6 +1805,7 @@ end
 
 function SmokeyLoot_CancelRoll()
 	SendAddonMessage("SmokeyLoot", "EndRoll", "RAID")
+	SmokeyItem:Reset()
 	SmokeyLootMLFrame_Update()
 end
 
