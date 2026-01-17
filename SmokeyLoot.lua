@@ -874,42 +874,32 @@ function SmokeyLootFrame_OnEvent(event, arg1, arg2, arg3, arg4)
 					end
 				end
 
-				if not isAllowed then
-					if IsMasterLooter() then
-						slmsg(player.." is not allowed to roll HR on this item.")
+				if isAllowed then
+					if max < SmokeyItem.lowestHR then
+						SmokeyItem.lowestHR = max
+						listwipe(Rolls.HR)
 					end
-					return
+					if max == SmokeyItem.lowestHR then
+						Rolls.HR[player] = roll
+					end
+				elseif IsMasterLooter() then
+					slmsg(player.." is not allowed to roll HR on this item.")
 				end
-
-				if max > SmokeyItem.lowestHR then
-					return
-				end
-
-				if max < SmokeyItem.lowestHR then
-					SmokeyItem.lowestHR = max
-					listwipe(Rolls.HR)
-				end
-
-				Rolls.HR[player] = roll
 
 			elseif max == 100 then
 				-- this is SR roll
-				local isAllowed = false
+				local isAllowed
 				for k, v in ipairs(SMOKEYLOOT.RAID) do
 					if v.itemID == SmokeyItem.id and v.char == player then
+						Rolls.SR[player] = roll + (v.bonus ~= -1 and v.bonus or 0)
 						isAllowed = true
 						break
 					end
 				end
 
-				if not isAllowed then
-					if IsMasterLooter() then
-						slmsg(player.." is not allowed to roll SR on this item.")
-					end
-					return
+				if not isAllowed and IsMasterLooter() then
+					slmsg(player.." is not allowed to roll SR on this item.")
 				end
-
-				Rolls.SR[player] = roll + (v.bonus ~= -1 and v.bonus or 0)
 
 			elseif max == 99 then
 				-- this is MS roll
@@ -921,28 +911,23 @@ function SmokeyLootFrame_OnEvent(event, arg1, arg2, arg3, arg4)
 					end
 				end
 
-				if not isAllowed then
-					if IsMasterLooter() then
-						slmsg(player.." is not allowed to roll MS on this item.")
-					end
-					return
-				end
-
-				if not SMOKEYLOOT.RAID.isPlusOneRaid or SMOKEYLOOT.RAID[index].pluses == SmokeyItem.lowestPlus then
-					Rolls.MS[player] = roll
-
-				elseif SMOKEYLOOT.RAID[index].pluses < SmokeyItem.lowestPlus then
-					SmokeyItem.lowestPlus = SMOKEYLOOT.RAID[index].pluses
-					Rolls.MS[player] = roll
-
-					-- discard rolls with higher pluses than new lowest plus
-					for k, v in pairs(Rolls.MS) do
-						for k2, v2 in ipairs(SMOKEYLOOT.RAID) do
-							if v2.char == k and v2.pluses > SmokeyItem.lowestPlus then
-								Rolls.MS[k] = nil
+				if isAllowed then
+					if not SMOKEYLOOT.RAID.isPlusOneRaid or SMOKEYLOOT.RAID[index].pluses == SmokeyItem.lowestPlus then
+						Rolls.MS[player] = roll
+					elseif SMOKEYLOOT.RAID[index].pluses < SmokeyItem.lowestPlus then
+						SmokeyItem.lowestPlus = SMOKEYLOOT.RAID[index].pluses
+						Rolls.MS[player] = roll
+						-- discard rolls with higher pluses than new lowest plus
+						for k, v in pairs(Rolls.MS) do
+							for k2, v2 in ipairs(SMOKEYLOOT.RAID) do
+								if v2.char == k and v2.pluses > SmokeyItem.lowestPlus then
+									Rolls.MS[k] = nil
+								end
 							end
 						end
 					end
+				elseif IsMasterLooter() then
+					slmsg(player.." is not allowed to roll MS on this item.")
 				end
 
 			elseif max == 98 then
@@ -959,14 +944,11 @@ function SmokeyLootFrame_OnEvent(event, arg1, arg2, arg3, arg4)
 					end
 				end
 
-				if not isAllowed then
-					if IsMasterLooter() then
-						slmsg(player.." is not allowed to roll Transmog on this item.")
-					end
-					return
+				if isAllowed then
+					Rolls.TMOG[player] = roll
+				elseif IsMasterLooter() then
+					slmsg(player.." is not allowed to roll Transmog on this item.")
 				end
-
-				Rolls.TMOG[player] = roll
 			end
 
 			AlreadyRolled[player] = true

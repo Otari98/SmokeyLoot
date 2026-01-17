@@ -41,7 +41,7 @@
 				<Size x="120" y="10"/>
 				<Anchors>
 					<Anchor point="LEFT" relativeTo="SmokeyLootFrameDBDate" relativePoint="RIGHT">
-						<Offset x="12" y="0"/>
+						<Offset x="75" y="0"/>
 					</Anchor>
 				</Anchors>
 				<Layers>
