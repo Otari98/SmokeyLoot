@@ -17,7 +17,7 @@ local Patterns = {
 	classes = gsub(ITEM_CLASSES_ALLOWED, "%%s", "(.*)"), -- "Classes: (.*)"
 }
 
-local CurrentTab = "database"
+local CurrentTab = "DATABASE"
 
 local CurrentLootSource = nil
 local Master = nil
@@ -962,7 +962,9 @@ function SmokeyLootFrame_OnEvent(event, arg1, arg2, arg3, arg4)
 
 	elseif event == "OPEN_MASTER_LOOT_LIST" or event == "LOOT_OPENED" then
 		if event == "LOOT_OPENED" then
-			_, CurrentLootSource = UnitExists("target")
+			if UnitExists("target") and UnitIsDead("target") and not UnitIsPlayer("target") then
+				_, CurrentLootSource = UnitExists("target")
+			end
 			if not CurrentLootSource then
 				CurrentLootSource = "chest"
 			end
@@ -975,7 +977,7 @@ function SmokeyLootFrame_OnEvent(event, arg1, arg2, arg3, arg4)
 			SendAddonMessage("SmokeyLoot", "GET_ML", "RAID")
 		end
 
-		debug(event, "master:", Master, "isMLmethod:", isMLmethod)
+		debug(event, "master:", Master, "isMLmethod:", isMLmethod, "CurrentLootSource:", CurrentLootSource)
 
 		if IsMasterLooter() and getn(SMOKEYLOOT.RAID) > 0 then
 			if not (GetNumLootItems() == 1 and LootSlotIsCoin(1)) then
@@ -1149,15 +1151,11 @@ function SmokeyLootFrame_OnEvent(event, arg1, arg2, arg3, arg4)
 				end
 			end
 
-		elseif channel == "GUILD" then
+		elseif channel == "GUILD" and player ~= UnitName("player") then
 			-- sync stuff here
-			if player == UnitName("player") then
-				return
-			end
-
 			if message == "GET_DB_LATEST" then
 				debug("DB requested by", player)
-				SmokeyLoot_Push()
+				SmokeyLoot_Push(player)
 				return
 			end
 
@@ -1179,6 +1177,7 @@ function SmokeyLootFrame_OnEvent(event, arg1, arg2, arg3, arg4)
 					SmokeyLootFrameProgressBarText:SetText("0%")
 					SmokeyLootFrameDBDate:SetText("Database version: updating...")
 					SmokeyLootPullButton:Hide()
+					slmsg("Updating database provided by "..Pusher..", please, stay online until its done.")
 				end
 
 			elseif player and player == Pusher then
@@ -1189,7 +1188,7 @@ function SmokeyLootFrame_OnEvent(event, arg1, arg2, arg3, arg4)
 					Pulling = false
 
 					SmokeyLootFrameProgressBar:Hide()
-					if CurrentTab ~= "raid" then
+					if CurrentTab ~= "RAID" then
 						SmokeyLootPullButton:Show()
 					end
 					SmokeyLootPullButton:Enable()
@@ -1202,6 +1201,7 @@ function SmokeyLootFrame_OnEvent(event, arg1, arg2, arg3, arg4)
 
 					SmokeyLoot_UpdateHR()
 					SmokeyLootFrame_Update()
+					slmsg("Database is updated.")
 				else
 					local _, _, index, itemID, itemName = strfind(message, "(%d+)=(%d+)=(.+)=")
 					index, itemID = tonumber(index), tonumber(itemID)
@@ -1244,7 +1244,7 @@ end
 function SmokeyLootFrame_Update()
 	arraywipe(SearchResult)
 
-	local tableToUpdate = SMOKEYLOOT[strupper(CurrentTab)]
+	local tableToUpdate = SMOKEYLOOT[CurrentTab]
 	local query = strtrim(strlower(SmokeyLootFrameSearchBox:GetText()))
 
 	if query ~= "" then
@@ -1379,7 +1379,7 @@ function SmokeyLootEntry_OnEnter()
 	GameTooltip:SetOwner(this, "ANCHOR_NONE")
 	EntryTooltip:SetOwner(this, "ANCHOR_NONE")
 
-	if CurrentTab == "hr" then
+	if CurrentTab == "HR" then
 		if this.data.itemID > 0 then
 			GameTooltip:SetHyperlink("item:"..this.data.itemID)
 		end
@@ -1400,7 +1400,7 @@ function SmokeyLootEntry_OnEnter()
 		end
 		EntryTooltip:AddLine(str)
 
-	elseif CurrentTab == "raid" then
+	elseif CurrentTab == "RAID" then
 
 		if this.data.itemID > 0 then
 			GameTooltip:SetHyperlink("item:"..this.data.itemID)
@@ -1424,7 +1424,7 @@ function SmokeyLootEntry_OnEnter()
 
 		EntryTooltip:AddLine(format("%s\nitemID:%d\npluses:%d\ngotHR: %s", char, this.data.itemID, this.data.pluses, this.data.gotHR and concat(this.data.gotHR, ", ") or "no"))
 	
-	elseif CurrentTab == "database" then
+	elseif CurrentTab == "DATABASE" then
 		if this.data.itemID > 0 then
 			GameTooltip:SetHyperlink("item:"..this.data.itemID)
 			EntryTooltip:AddLine("itemID: "..this.data.itemID)
@@ -1474,7 +1474,7 @@ function SmokeyLootEntry_OnClick()
 		-- if this.data.bonus and editBoxID == 4 then
 			SmokeyLootEditEntryFrameEditBox4:SetText(this.data.bonus)
 		-- end
-	elseif CurrentTab == "database" or CurrentTab == "raid" then
+	elseif CurrentTab == "DATABASE" or CurrentTab == "RAID" then
 		SmokeyLoot_ToggleEditEntryFrame(this:GetID())
 	end
 end
@@ -2004,7 +2004,7 @@ function SmokeyLoot_SwitchTab(switchTo)
 
 	CurrentTab = switchTo
 
-	if switchTo == "raid" then
+	if switchTo == "RAID" then
 		SmokeyLootImportButton:Show()
 		SmokeyLootFinishRaidButton:Show()
 		SmokeyLootClearButton:Show()
@@ -2012,7 +2012,7 @@ function SmokeyLoot_SwitchTab(switchTo)
 		SmokeyLoot_EnableRaidControls()
 		SmokeyLootPullButton:Hide()
 
-	elseif switchTo == "database" then
+	elseif switchTo == "DATABASE" then
 		SmokeyLootImportButton:Hide()
 		SmokeyLootFinishRaidButton:Hide()
 		SmokeyLootClearButton:Hide()
@@ -2028,7 +2028,7 @@ function SmokeyLoot_SwitchTab(switchTo)
 			SmokeyLootPullButton:Show()
 		end
 
-	elseif switchTo == "hr" then
+	elseif switchTo == "HR" then
 		SmokeyLootImportButton:Hide()
 		SmokeyLootFinishRaidButton:Hide()
 		SmokeyLootClearButton:Hide()
@@ -2044,9 +2044,6 @@ function SmokeyLoot_SwitchTab(switchTo)
 end
 
 function SmokeyLoot_FinishRaidRoutine()
-	slmsg("Finishing raid.")
-
-	-- TODO: rewrite for confirmation popup
 	for i = getn(SMOKEYLOOT.RAID), 1, -1 do
 		local id = SMOKEYLOOT.RAID[i].itemID
 		local bonus = SMOKEYLOOT.RAID[i].bonus
@@ -2160,8 +2157,8 @@ function SmokeyLoot_FinishRaidRoutine()
 end
 
 function SmokeyLootFinishRaidButton_OnClick()
+	slmsg("Finishing raid.")
 	SmokeyLootFinishRaidButton:Disable()
-
 	SmokeyLoot_Pull()
 
 	PushAfter = true
@@ -2193,11 +2190,12 @@ function SmokeyLoot_Pull()
 		if SMOKEYLOOT.DATABASE.date < SmokeyLoot_GetRemoteVersion() then
 			Pulling = false
 			SmokeyLootPullButton:Enable()
+			slmsg("Looks like there is no one online who can share the latest database.")
 		end
 	end)
 end
 
-function SmokeyLoot_Push()
+function SmokeyLoot_Push(player)
 	if not IsOfficer(UnitName("player")) or Pushing or Pusher or SMOKEYLOOT.DATABASE.date < SmokeyLoot_GetRemoteVersion() then
 		return
 	end
@@ -2224,6 +2222,9 @@ function SmokeyLoot_Push()
 	Pushing = true
 
 	debug("Pushing database")
+	if player then
+		slmsg("Sharing database, requested by "..player..", please, stay online until it's done.")
+	end
 
 	dbPushFrame:SetScript("OnUpdate", function()
 		SendAddonMessage("SmokeyLoot", count.."="..messages[count], "GUILD")
@@ -2234,6 +2235,7 @@ function SmokeyLoot_Push()
 			SendAddonMessage("SmokeyLoot", "end;"..SMOKEYLOOT.DATABASE.date, "GUILD")
 			Pushing = false
 			debug("Database push finished")
+			slmsg("Database is shared.")
 		end
 	end)
 end
@@ -2421,7 +2423,7 @@ function SmokeyLoot_ToggleEditEntryFrame(id, add)
 	SmokeyLootEditEntryFrame.add = add
 	SmokeyLootEditEntryFrame.tab = CurrentTab
 
-	if CurrentTab == "database" then
+	if CurrentTab == "DATABASE" then
 		if not IsOfficer(UnitName("player")) then
 			SmokeyLootEditEntryFrame:Hide()
 			return
@@ -2434,7 +2436,9 @@ function SmokeyLoot_ToggleEditEntryFrame(id, add)
 		SmokeyLootEditEntryFrameEditBox5:Hide()
 		SmokeyLootEditEntryFramePluses:Hide()
 
-	elseif CurrentTab == "raid" then
+		SmokeyLootEditEntryFrameHint:SetText("Shift-click entries or chat links to copy paste values")
+
+	elseif CurrentTab == "RAID" then
 		if not IsMasterLooter() then
 			SmokeyLootEditEntryFrame:Hide()
 			return
@@ -2454,6 +2458,8 @@ function SmokeyLoot_ToggleEditEntryFrame(id, add)
 			SmokeyLootEditEntryFrameEditBox5:Hide()
 			SmokeyLootEditEntryFramePluses:Hide()
 		end
+
+		SmokeyLootEditEntryFrameHint:SetText("Shift-click entries or chat links to copy paste values\nSet bonus to -1 for recieved SR")
 	end
 
 	if add then
@@ -2556,7 +2562,7 @@ function SmokeyLootEditEntryFrameAcceptButton_OnClick()
 end
 
 function SmokeyLootEditEntryFrameDeleteButton_OnClick()
-	if CurrentTab == "database" and IsOfficer(UnitName("player")) then
+	if CurrentTab == "DATABASE" and IsOfficer(UnitName("player")) then
 		if SMOKEYLOOT.DATABASE.date < SmokeyLoot_GetRemoteVersion() then
 			slmsg("You need to get latest database first.")
 			return
@@ -2565,7 +2571,7 @@ function SmokeyLootEditEntryFrameDeleteButton_OnClick()
 		SmokeyLoot_UpdateHR()
 		SmokeyLoot_SetRemoteVersion()
 
-	elseif CurrentTab == "raid" and IsMasterLooter() then
+	elseif CurrentTab == "RAID" and IsMasterLooter() then
 		tremove(SMOKEYLOOT.RAID, SmokeyLootEditEntryFrame.id)
 		SmokeyLoot_PushRaid()
 	end
@@ -2599,16 +2605,16 @@ function SmokeyLootButton_OnClick()
 end
 
 function SmokeyLootAddButton_OnClick()
-	SmokeyLoot_ToggleEditEntryFrame(getn(SMOKEYLOOT[strupper(CurrentTab)]) + 1, true)
+	SmokeyLoot_ToggleEditEntryFrame(getn(SMOKEYLOOT[CurrentTab]) + 1, true)
 end
 
 function SmokeyLootAddButton_OnShow()
-	if (CurrentTab == "database" and not IsOfficer(UnitName("player"))) or (CurrentTab == "raid" and not IsMasterLooter()) then
+	if (CurrentTab == "DATABASE" and not IsOfficer(UnitName("player"))) or (CurrentTab == "RAID" and not IsMasterLooter()) then
 		SmokeyLootAddButton:Disable()
 		return
 	end
 
-	if (CurrentTab == "raid" and getn(SMOKEYLOOT.RAID) > 0) or (CurrentTab == "database" and getn(SMOKEYLOOT.RAID) == 0) then
+	if (CurrentTab == "RAID" and getn(SMOKEYLOOT.RAID) > 0) or (CurrentTab == "DATABASE" and getn(SMOKEYLOOT.RAID) == 0) then
 		SmokeyLootAddButton:Enable()
 	else
 		SmokeyLootAddButton:Disable()
@@ -2616,7 +2622,7 @@ function SmokeyLootAddButton_OnShow()
 end
 
 function SmokeyLoot_EnableRaidControls()
-	if CurrentTab ~= "raid" then
+	if CurrentTab ~= "RAID" then
 		return
 	end
 

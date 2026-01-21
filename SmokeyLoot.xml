@@ -248,7 +248,7 @@
 				<Scripts>
 					<OnClick>
 						PanelTemplates_Tab_OnClick(SmokeyLootFrame)
-						SmokeyLoot_SwitchTab("database")
+						SmokeyLoot_SwitchTab("DATABASE")
 					</OnClick>
 					<OnEnter>
 						GameTooltip:SetOwner(this, "ANCHOR_RIGHT")
@@ -270,7 +270,7 @@
 				<Scripts>
 					<OnClick>
 						PanelTemplates_Tab_OnClick(SmokeyLootFrame)
-						SmokeyLoot_SwitchTab("hr")
+						SmokeyLoot_SwitchTab("HR")
 					</OnClick>
 					<OnEnter>
 						GameTooltip:SetOwner(this, "ANCHOR_RIGHT")
@@ -292,7 +292,7 @@
 				<Scripts>
 					<OnClick>
 						PanelTemplates_Tab_OnClick(SmokeyLootFrame)
-						SmokeyLoot_SwitchTab("raid")
+						SmokeyLoot_SwitchTab("RAID")
 					</OnClick>
 					<OnEnter>
 						GameTooltip:SetOwner(this, "ANCHOR_RIGHT")
@@ -368,7 +368,7 @@
 								</Anchor>
 							</Anchors>
 						</FontString>
-						<FontString name="$parentHint" inherits="GameFontNormalSmall" justifyH="CENTER" text="Shift-click entries or chat links to copy paste values">
+						<FontString name="$parentHint" inherits="GameFontNormalSmall" justifyH="CENTER">
 							<Size x="256" y="64"/>
 							<Anchors>
 								<Anchor point="BOTTOM">
