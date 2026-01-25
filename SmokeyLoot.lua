@@ -626,7 +626,9 @@ function IsBongoAlt(name)
 		return false
 	end
 
-	return SMOKEYLOOT.GUILD[SMOKEYLOOT.GUILD[name].main].rankIndex < 4
+	if tonumber(SMOKEYLOOT.GUILD[SMOKEYLOOT.GUILD[name].main].rankIndex) then
+		return SMOKEYLOOT.GUILD[SMOKEYLOOT.GUILD[name].main].rankIndex < 4
+	end
 end
 
 local DelayFrame = CreateFrame("Frame")
@@ -1615,7 +1617,7 @@ local function DiscardLowRankRolls(rollType)
 	for k, v in pairs(Rolls[rollType]) do
 		if SMOKEYLOOT.GUILD[k] and tonumber(SMOKEYLOOT.GUILD[k].rankIndex) > highestRank then
 			if IsMasterLooter() then
-				slmsg(format("Low rank roll discarded: %s %d (%s). Highest rank: %s", k, v, SMOKEYLOOT.GUILD[k].rankName, GuildControlGetRankName(highestRank)))
+				slmsg(format("Low rank roll discarded: %s %d (%s). Highest rank: %s", k, v, SMOKEYLOOT.GUILD[k].rankName, GuildControlGetRankName(highestRank + 1)))
 			end
 			Rolls[rollType][k] = nil
 		end
@@ -1802,9 +1804,7 @@ function SmokeyLoot_StartOrEndRoll()
 					end
 				end
 			end
-			-- delay reset slightly so we still have data available on LOOT_SLOT_CLEARED
 			SmokeyLootPopupFrame:Hide()
-			Delay(0.5, SmokeyLoot_CancelRoll)
 		end
 	end
 
@@ -2492,7 +2492,7 @@ function SmokeyLootEditEntryFrameAcceptButton_OnClick()
 	local newChar = strtrim(SmokeyLootEditEntryFrameEditBox3:GetText())
 	local newBonus = tonumber(strtrim(SmokeyLootEditEntryFrameEditBox4:GetText()))
 	
-	if tab == "database" then
+	if tab == "DATABASE" then
 		if not IsOfficer(UnitName("player")) then
 			SmokeyLootEditEntryFrame:Hide()
 			return
@@ -2517,7 +2517,7 @@ function SmokeyLootEditEntryFrameAcceptButton_OnClick()
 		SmokeyLoot_SetRemoteVersion()
 		SmokeyLoot_UpdateHR()
 
-	elseif tab == "raid" then
+	elseif tab == "RAID" then
 		if not IsMasterLooter() then
 			SmokeyLootEditEntryFrame:Hide()
 			return
