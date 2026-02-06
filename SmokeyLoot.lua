@@ -360,6 +360,25 @@ local function listwipe(list)
 	end
 end
 
+local temp = {}
+local function SortRaidByDisabled()
+	arraywipe(temp)
+	for i = 1, getn(SMOKEYLOOT.RAID) do
+		if SMOKEYLOOT.RAID[i].enabled == false then
+			tinsert(temp, SMOKEYLOOT.RAID[i])
+			SMOKEYLOOT.RAID[i].delete = true
+		end
+	end
+	for i = getn(SMOKEYLOOT.RAID), 1, -1 do
+		if SMOKEYLOOT.RAID[i].delete then
+			tremove(SMOKEYLOOT.RAID, i)
+		end
+	end
+	for i = 1, getn(temp) do
+		tinsert(SMOKEYLOOT.RAID, temp[i])
+	end
+end
+
 local function sortfunc(a, b)
 	if a.itemID and b.itemID and a.itemID == b.itemID then
 		return a.bonus > b.bonus
@@ -388,45 +407,45 @@ local function arrcontains(array, value)
 	return nil
 end
 
-local IDCache = {}
+-- local IDCache = {}
 
-function GetItemIDByName(name)
-	if not name then
-		return -1, UNKNOWN
-	end
-	if type(IDCache[name]) == "table" then
-		return IDCache[name][1], IDCache[name][2]
-	end
-	if pfDB then
-		for id, itemName in pairs(pfDB.items.loc) do
-			if gsub(name, "'", "") == gsub(itemName, "'", "") then
-				IDCache[name] = {}
-				IDCache[name][1] = id
-				IDCache[name][2] = itemName
-				IDCache[itemName] = IDCache[name]
-				return id, itemName
-			end
-		end
-		IDCache[name] = {}
-		IDCache[name][1] = -1
-		IDCache[name][2] = name
-		return -1, name
-	end
-	for itemID = 1, 99999 do
-		local itemName = GetItemInfo(itemID)
-		if itemName and gsub(itemName, "'", "") == gsub(name, "'", "") then
-			IDCache[name] = {}
-			IDCache[name][1] = itemID
-			IDCache[name][2] = itemName
-			IDCache[itemName] = IDCache[name]
-			return itemID, itemName
-		end
-	end
-	IDCache[name] = {}
-	IDCache[name][1] = -1
-	IDCache[name][2] = name
-	return -1, name
-end
+-- function GetItemIDByName(name)
+-- 	if not name then
+-- 		return -1, UNKNOWN
+-- 	end
+-- 	if type(IDCache[name]) == "table" then
+-- 		return IDCache[name][1], IDCache[name][2]
+-- 	end
+-- 	if pfDB then
+-- 		for id, itemName in pairs(pfDB.items.loc) do
+-- 			if gsub(name, "'", "") == gsub(itemName, "'", "") then
+-- 				IDCache[name] = {}
+-- 				IDCache[name][1] = id
+-- 				IDCache[name][2] = itemName
+-- 				IDCache[itemName] = IDCache[name]
+-- 				return id, itemName
+-- 			end
+-- 		end
+-- 		IDCache[name] = {}
+-- 		IDCache[name][1] = -1
+-- 		IDCache[name][2] = name
+-- 		return -1, name
+-- 	end
+-- 	for itemID = 1, 99999 do
+-- 		local itemName = GetItemInfo(itemID)
+-- 		if itemName and gsub(itemName, "'", "") == gsub(name, "'", "") then
+-- 			IDCache[name] = {}
+-- 			IDCache[name][1] = itemID
+-- 			IDCache[name][2] = itemName
+-- 			IDCache[itemName] = IDCache[name]
+-- 			return itemID, itemName
+-- 		end
+-- 	end
+-- 	IDCache[name] = {}
+-- 	IDCache[name][1] = -1
+-- 	IDCache[name][2] = name
+-- 	return -1, name
+-- end
 
 SmokeyItem = {}
 
@@ -584,7 +603,7 @@ function CanRollMS(itemID, unit)
 	ScanTooltip:SetHyperlink("item:"..itemID)
 	local numLines = ScanTooltip:NumLines()
 	numLines = (numLines < 15) and numLines or 15
-	
+	local numLinesWithResist = 0
 	for i = 2, numLines do
 		local textLeft = _G[tooltipName.."TextLeft"..i]
 		local textRight = _G[tooltipName.."TextRight"..i]
@@ -604,7 +623,13 @@ function CanRollMS(itemID, unit)
 			return false
 		end
 		local _, _, resistAmount = strfind(text, Patterns.resist)
-		if resistAmount and tonumber(resistAmount) > 15 then
+		if resistAmount then
+			numLinesWithResist = numLinesWithResist + 1
+			if tonumber(resistAmount) > 15 then
+				return false
+			end
+		end
+		if numLinesWithResist > 2 then
 			return false
 		end
 	end
@@ -733,12 +758,14 @@ function SmokeyLootFrame_OnEvent(event, arg1, arg2, arg3, arg4)
 		end
 
 	elseif event == "GUILD_ROSTER_UPDATE" then
-		listwipe(SMOKEYLOOT.GUILD)
+		for k in pairs(SMOKEYLOOT.GUILD) do
+			SMOKEYLOOT.GUILD[k] = nil
+		end
 
 		for i = 1, GetNumGuildMembers(true) do
 			local name, rank, rankIndex, level, class, zone, note, officerNote, online, status = GetGuildRosterInfo(i)
 			if name then
-				SMOKEYLOOT.GUILD[name] = SMOKEYLOOT.GUILD[name] or {}
+				SMOKEYLOOT.GUILD[name] = {}
 				SMOKEYLOOT.GUILD[name].rankName = rank
 				SMOKEYLOOT.GUILD[name].rankIndex = rankIndex
 				SMOKEYLOOT.GUILD[name].class = strupper(class)
@@ -785,6 +812,13 @@ function SmokeyLootFrame_OnEvent(event, arg1, arg2, arg3, arg4)
 
 			for k, v in ipairs(SMOKEYLOOT.RAID) do
 				if v.char == joined then
+					v.enabled = true
+					sort(SMOKEYLOOT.RAID, sortfunc)
+					SortRaidByDisabled()
+					SmokeyLoot_PushRaid()
+					if SmokeyLootFrame:IsShown() then
+						SmokeyLootFrame_Update()
+					end
 					return
 				end
 			end
@@ -795,8 +829,10 @@ function SmokeyLootFrame_OnEvent(event, arg1, arg2, arg3, arg4)
 				itemID = 0,
 				char = joined,
 				pluses = 0,
+				enabled = true,
 			})
 			sort(SMOKEYLOOT.RAID, sortfunc)
+			SortRaidByDisabled()
 			SmokeyLoot_PushRaid()
 
 			slmsg(format("%s was not in the raid list, fill their SR info ASAP!", joined))
@@ -845,8 +881,11 @@ function SmokeyLootFrame_OnEvent(event, arg1, arg2, arg3, arg4)
 					itemID = 0,
 					char = player,
 					pluses = 0,
+					enabled = true,
 				})
 				sort(SMOKEYLOOT.RAID, sortfunc)
+				SortRaidByDisabled()
+
 				SmokeyLoot_PushRaid()
 
 				for k, v in ipairs(SMOKEYLOOT.RAID) do
@@ -1034,7 +1073,7 @@ function SmokeyLootFrame_OnEvent(event, arg1, arg2, arg3, arg4)
 				end
 			end
 
-			SmokeyItem:Reset()
+			SmokeyLoot_CancelRoll()
 			SmokeyLoot_UpdateRollers()
 			SmokeyLoot_PushRaid()
 		end
@@ -1051,7 +1090,7 @@ function SmokeyLootFrame_OnEvent(event, arg1, arg2, arg3, arg4)
 		local player = arg4
 
 		if channel == "RAID" then
-			if strfind(message, "^StartRoll") then
+			if strfind(message, "^StartRoll") and player == SmokeyLoot_GetLootMasterName() then
 				-- starting roll, show popup
 				local _, _, id, name, texture, srBy, candidates = strfind(message, "StartRoll:(%d*);(.*);(.*);(.*);(.*)")
 
@@ -1085,14 +1124,14 @@ function SmokeyLootFrame_OnEvent(event, arg1, arg2, arg3, arg4)
 
 				SmokeyLootPopupFrame:SetScript("OnUpdate", LootPopupOnUpdate)
 
-			elseif strfind(message, "^EndRoll") then
-				-- ending roll, hide popup
-				SmokeyLootPopupFrame:Hide()
-				SmokeyLoot_UpdateRollers()
-				SmokeyItem:Reset()
-
 			elseif player ~= UnitName("player") then
-				if message == "REPORT_ADDON_VERSION" then
+				if strfind(message, "^EndRoll") and player == SmokeyLoot_GetLootMasterName() then
+					-- ending roll, hide popup
+					SmokeyLootPopupFrame:Hide()
+					SmokeyLoot_UpdateRollers()
+					SmokeyItem:Reset()
+
+				elseif message == "REPORT_ADDON_VERSION" then
 					debug(message, player)
 					SendAddonMessage("SmokeyLoot", "V_"..GetAddOnMetadata("SmokeyLoot", "Version"), "RAID")
 
@@ -1139,7 +1178,7 @@ function SmokeyLootFrame_OnEvent(event, arg1, arg2, arg3, arg4)
 					SmokeyLootFrame_Update()
 
 				else
-					local _, _, key, itemID, item, char, bonus, pluses, gotHR = strfind(message, "^(%d+);(%d+);(.*);(.*);(%-?%d+);(%d+);(.*)")
+					local _, _, key, itemID, item, char, bonus, pluses, enabled, gotHR = strfind(message, "^(%d+);(%d+);(.*);(.*);(%-?%d+);(%d+);(%d);(.*)")
 					if key then
 						tinsert(SMOKEYLOOT.RAID, tonumber(key), {
 							itemID = tonumber(itemID),
@@ -1147,6 +1186,7 @@ function SmokeyLootFrame_OnEvent(event, arg1, arg2, arg3, arg4)
 							char = char,
 							bonus = tonumber(bonus),
 							pluses = tonumber(pluses),
+							enabled = enabled == "1",
 							gotHR = (gotHR ~= "" and strsplit(gotHR, ",")) or nil
 						})
 					end
@@ -1155,18 +1195,27 @@ function SmokeyLootFrame_OnEvent(event, arg1, arg2, arg3, arg4)
 
 		elseif channel == "GUILD" and player ~= UnitName("player") then
 			-- sync stuff here
-			if message == "GET_DB_LATEST" then
+			if message == "GET_DB_LATEST" and IsOfficer(UnitName("player")) then
 				debug("DB requested by", player)
+				SendAddonMessage("SmokeyLoot", "VDB_"..SMOKEYLOOT.DATABASE.date, "GUILD")
+				return
+			end
+			if strfind(message, "^VDB_%d+") then
+				local _, _, date = strfind(message, "^VDB_(%d+)")
+				if tonumber(date) > tonumber(SMOKEYLOOT.DATABASE.date) and IsOfficer(player) then
+					SendAddonMessage("SmokeyLoot", "PULL_FROM_"..player, "GUILD")
+				end
+				return
+			end
+			if message == "PULL_FROM_"..UnitName("player") and IsOfficer(UnitName("player")) then
 				SmokeyLoot_Push(player)
 				return
 			end
-
 			if not Pusher and strfind(message, "^start;%d+;%d+") then
 				debug(message, player)
 
 				local _, _, date, max = strfind(message, "start;(%d+);(%d+)")
 				if tonumber(date) > tonumber(SMOKEYLOOT.DATABASE.date) and IsOfficer(player) then
-					
 					arraywipe(SMOKEYLOOT.DATABASE)
 					arraywipe(SMOKEYLOOT.HR)
 					
@@ -1179,7 +1228,7 @@ function SmokeyLootFrame_OnEvent(event, arg1, arg2, arg3, arg4)
 					SmokeyLootFrameProgressBarText:SetText("0%")
 					SmokeyLootFrameDBDate:SetText("Database version: updating...")
 					SmokeyLootPullButton:Hide()
-					slmsg("Updating database provided by "..Pusher..", please, stay online until its done.")
+					slmsg("Updating database, provided by "..Pusher..", please, stay online until its done.")
 				end
 
 			elseif player and player == Pusher then
@@ -1347,6 +1396,13 @@ function SmokeyLootFrame_Update()
 			if GetMouseFocus() == entry then
 				entry:Hide()
 				entry:Show()
+			end
+
+			if tableToUpdate == SMOKEYLOOT.RAID then
+				local enabled = tableToUpdate[entryIndex].enabled
+				entry:SetAlpha(enabled and 1 or 0.5)
+			else
+				entry:SetAlpha(1)
 			end
 		else
 			entry:Hide()
@@ -1812,6 +1868,7 @@ function SmokeyLoot_StartOrEndRoll()
 end
 
 function SmokeyLoot_CancelRoll()
+	SmokeyLootPopupFrame:Hide()
 	SendAddonMessage("SmokeyLoot", "EndRoll", "RAID")
 	SmokeyItem:Reset()
 	SmokeyLootMLFrame_Update()
@@ -1909,42 +1966,14 @@ function SmokeyLoot_UpdateRollers()
 	end
 end
 
-function SmokeyLoot_Import(tsv)
-	-- if tsv and ImportFile then
-	-- 	local file = "Smokey Tokers SR Sheet - Database"
-	-- 	local text = ImportFile(file)
-	-- 	if not text then
-	-- 		return
-	-- 	end
-	-- 	arraywipe(SMOKEYLOOT.DATABASE)
-	-- 	local split = strsplit(text, "\n")
-	-- 	for i = 1, getn(split) do
-	-- 		local _, _, itemName, char, bonus = strfind(split[i], "(.+)\t(%a+)\t(%d+)")
-	-- 		local itemID
-	-- 		if itemName then
-	-- 			itemID, itemName = GetItemIDByName(itemName)
-	-- 			bonus = tonumber(bonus)
-	-- 		end
-	-- 		tinsert(SMOKEYLOOT.DATABASE, {
-	-- 			itemID = itemID,
-	-- 			item = itemName,
-	-- 			char = char,
-	-- 			bonus = bonus,
-	-- 		})
-	-- 	end
-	-- 	SmokeyLoot_SetRemoteVersion()
-	-- 	SmokeyLoot_UpdateHR()
-	-- 	SmokeyLootFrame_Update()
-	-- 	return
-	-- end
-
+function SmokeyLoot_Import()
 	local text = strtrim(SmokeyImportText:GetText())
 	text = gsub(text, ',"', ",")
 	text = gsub(text, '",', ",")
 
 	local split = strsplit(text, "\n")
 
-	arraywipe(SMOKEYLOOT.RAID)
+	-- arraywipe(SMOKEYLOOT.RAID)
 
 	SMOKEYLOOT.RAID.isPlusOneRaid = SmokeyLootImportFrameEnablePlusOne:GetChecked() and true or false
 	SMOKEYLOOT.RAID.isBongoAltRaid = SmokeyLootImportFrameEnableBongoAltRule:GetChecked() and true or false
@@ -1952,21 +1981,32 @@ function SmokeyLoot_Import(tsv)
 	-- skip first line
 	for i = 2, getn(split) do
 		local _, _, id, itemName, char = strfind(split[i], "^(%d+),(.+),(.+)$")
-		local bonus = 0
 		if id then
+			-- get players bonus on this item
+			local bonus = 0
 			for k, v in ipairs(SMOKEYLOOT.DATABASE) do
 				if v.itemID == tonumber(id) and v.char == char then
 					bonus = v.bonus
 					break
 				end
 			end
-			-- skip people not in the raid
+			-- disable if player is not in the raid
+			local enabled = false
 			for j = 1, 40 do
 				local name, rank, subgroup, level, class, fileName, zone, online, isDead = GetRaidRosterInfo(j)
 				if name and name == char then
-					tinsert(SMOKEYLOOT.RAID, { char = char, itemID = tonumber(id), item = itemName, bonus = bonus, pluses = 0 })
+					enabled = true
 					break
 				end
+			end
+			local index = arrcontains(SMOKEYLOOT.RAID, char)
+			if index then
+				-- if player found in the list, just refresh item
+				SMOKEYLOOT.RAID[index].itemID = tonumber(id)
+				SMOKEYLOOT.RAID[index].item = itemName
+				SMOKEYLOOT.RAID[index].bonus = bonus
+			else
+				tinsert(SMOKEYLOOT.RAID, { char = char, itemID = tonumber(id), item = itemName, bonus = bonus, pluses = 0, enabled = enabled })
 			end
 		end
 	end
@@ -1975,14 +2015,14 @@ function SmokeyLoot_Import(tsv)
 	for i = 1, 40 do
 		local name, rank, subgroup, level, class, fileName, zone, online, isDead = GetRaidRosterInfo(i)
 		if name and not arrcontains(SMOKEYLOOT.RAID, name) then
-			tinsert(SMOKEYLOOT.RAID, { char = name, itemID = 0, item = "", bonus = 0, pluses = 0 })
+			tinsert(SMOKEYLOOT.RAID, { char = name, itemID = 0, item = "", bonus = 0, pluses = 0, enabled = true })
 		end
 	end
 
 	sort(SMOKEYLOOT.RAID, sortfunc)
+	SortRaidByDisabled()
 
 	SmokeyLootImportFrame:Hide()
-
 	SmokeyLootFrame_Update()
 	SmokeyLoot_EnableRaidControls()
 	SmokeyLoot_PushRaid()
@@ -2049,8 +2089,12 @@ function SmokeyLoot_FinishRaidRoutine()
 		local bonus = SMOKEYLOOT.RAID[i].bonus
 		local char = SMOKEYLOOT.RAID[i].char
 		local gotHR = SMOKEYLOOT.RAID[i].gotHR
-
-		-- first check if player got any of their HR items
+		local enabled = SMOKEYLOOT.RAID[i].enabled
+		-- remove disabled
+		if enabled == false then
+			tremove(SMOKEYLOOT.RAID, i)
+		end
+		-- check if player got any of their HR items
 		if gotHR then
 			-- find that item and character in DATABASE and remove
 			for _, itemID in ipairs(gotHR) do
@@ -2256,10 +2300,11 @@ function SmokeyLoot_PushRaid(clear)
 	local str
 
 	sort(SMOKEYLOOT.RAID, sortfunc)
+	SortRaidByDisabled()
 
 	for k, v in ipairs(SMOKEYLOOT.RAID) do
 		if type(v) == "table" then
-			str = k..";"..v.itemID..";"..v.item..";"..v.char..";"..v.bonus..";"..v.pluses..";"..(v.gotHR and concat(v.gotHR, ",") or "")
+			str = k..";"..v.itemID..";"..v.item..";"..v.char..";"..v.bonus..";"..v.pluses..";"..(v.enabled and "1" or "0")..";"..(v.gotHR and concat(v.gotHR, ",") or "")
 			tinsert(messages, str)
 			-- debug(str)
 		end
@@ -2287,44 +2332,39 @@ function SmokeyLoot_PushRaid(clear)
 	end)
 end
 
-function SmokeyLoot_Cleanup()
-	-- if not IsOfficer(UnitName("player")) then
-	-- 	return
-	-- end
+function SmokeyLoot_CheckDBSanity()
+	if not IsOfficer(UnitName("player")) then
+		return
+	end
 
-	-- if SMOKEYLOOT.DATABASE.date < SmokeyLoot_GetRemoteVersion() then
-	-- 	slmsg("You need to get latest database first.")
-	-- 	return
-	-- end
+	if SMOKEYLOOT.DATABASE.date < SmokeyLoot_GetRemoteVersion() then
+		slmsg("You need to get latest database first.")
+		return
+	end
 
-	-- slmsg("Cleanup start")
-	-- local nonmembers, duplicates = 0, 0
+	local nonmembers, duplicates = 0, 0
 
-	-- for k, v in ipairs(SMOKEYLOOT.DATABASE) do
-	-- 	if not SMOKEYLOOT.GUILD[v.char] then
-	-- 		slmsg(format("Removed non guild member entry: %s %s itemID: %d bonus: %d", v.char, v.item, v.itemID, v.bonus))
-	-- 		tremove(SMOKEYLOOT.DATABASE, k)
-	-- 		nonmembers = nonmembers + 1
-	-- 	end
-	-- end
-	-- local seen = {}
-	-- for k, v in ipairs(SMOKEYLOOT.DATABASE) do
-	-- 	if not seen[v.itemID..v.char] then
-	-- 		seen[v.itemID..v.char] = true
-	-- 	else
-	-- 		SMOKEYLOOT.DATABASE[k].remove = true
-	-- 	end
-	-- end
-	-- for i = getn(SMOKEYLOOT.DATABASE), 1, -1 do
-	-- 	if SMOKEYLOOT.DATABASE[i].remove then
-	-- 		local v = SMOKEYLOOT.DATABASE[i]
-	-- 		slmsg(format("Removed duplicated entry: %s %s itemID: %d bonus: %d", v.char, v.item, v.itemID, v.bonus))
-	-- 		tremove(SMOKEYLOOT.DATABASE, i)
-	-- 		duplicates = duplicates + 1
-	-- 	end
-	-- end
-	-- SmokeyLoot_SetRemoteVersion()
-	-- slmsg(format("Cleanup finished, non guild member entries removed: %d, duplicated entries removed: %d", nonmembers, duplicates))
+	for k, v in ipairs(SMOKEYLOOT.DATABASE) do
+		if not SMOKEYLOOT.GUILD[v.char] then
+			slmsg(format("Non guild member entry: %s %s itemID: %d bonus: %d", v.char, v.item, v.itemID, v.bonus))
+			nonmembers = nonmembers + 1
+		end
+	end
+	local seen = {}
+	local dup = {}
+	for k, v in ipairs(SMOKEYLOOT.DATABASE) do
+		if not seen[v.itemID..v.char] then
+			seen[v.itemID..v.char] = true
+		else
+			tinsert(dup, v)
+		end
+	end
+	for k, v in ipairs(dup) do
+		slmsg(format("duplicated entry %d %s %s",v.itemID, v.item, v.char))
+	end
+	duplicates = getn(dup)
+
+	slmsg(format("Non guild member entries (potentially): %d, duplicated entries: %d", nonmembers, duplicates))
 end
 
 function SmokeyLoot_GetRemoteVersion()
