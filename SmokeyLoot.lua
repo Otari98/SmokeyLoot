@@ -567,15 +567,10 @@ end
 
 function CanRollMS(itemID, unit)
 	itemID = tonumber(itemID)
-
-	if not itemID then
-		return nil
-	end
-
+	if not itemID then return nil end
+	
 	-- Fashion Coin
-	if itemID == 51217 then
-		return false
-	end
+	if itemID == 51217 then return false end
 
 	local itemName, itemLink, itemQuality, itemLevel, itemType, itemSubType, itemCount, itemEquipLoc, itemTexture = GetItemInfo(itemID)
 	
@@ -586,9 +581,7 @@ function CanRollMS(itemID, unit)
 	local class, enClass = UnitClass(unit or "player")
 	
 	if (itemType == L["Armor"] or itemType == L["Weapon"]) and itemEquipLoc ~= "" then
-		if not SubTypesForClass[enClass][itemSubType] then
-			return false
-		end
+		if not SubTypesForClass[enClass][itemSubType] then return false end
 	end
 
 	local tooltipName = ScanTooltip:GetName()
@@ -622,34 +615,26 @@ function CanRollMS(itemID, unit)
 		if (not unit or unit == "player") and (IsRed(rL, gL, bL) or IsRed(rR, gR, bR)) then
 			return false
 		end
-		local _, _, resistAmount = strfind(text, Patterns.resist)
-		if resistAmount then
-			numLinesWithResist = numLinesWithResist + 1
-			if tonumber(resistAmount) > 15 then
-				return false
-			end
-		end
-		if numLinesWithResist > 2 then
-			return false
-		end
+		-- local _, _, resistAmount = strfind(text, Patterns.resist)
+		-- if resistAmount then
+		-- 	numLinesWithResist = numLinesWithResist + 1
+		-- 	if tonumber(resistAmount) > 15 then
+		-- 		return false
+		-- 	end
+		-- end
+		-- if numLinesWithResist > 3 then
+		-- 	return false
+		-- end
 	end
 
 	return true
 end
 
 function IsBongoAlt(name)
-	if not SMOKEYLOOT.GUILD[name] then
-		return false
-	end
-	if not SMOKEYLOOT.GUILD[name].main then
-		return false
-	end
-	if not SMOKEYLOOT.GUILD[SMOKEYLOOT.GUILD[name].main] then
-		return false
-	end
-	if not AltRanks[SMOKEYLOOT.GUILD[name].rankName] then
-		return false
-	end
+	if not SMOKEYLOOT.GUILD[name] then return false end
+	if not SMOKEYLOOT.GUILD[name].main then return false end
+	if not SMOKEYLOOT.GUILD[SMOKEYLOOT.GUILD[name].main] then return false end
+	if not AltRanks[SMOKEYLOOT.GUILD[name].rankName] then return false end
 
 	if tonumber(SMOKEYLOOT.GUILD[SMOKEYLOOT.GUILD[name].main].rankIndex) then
 		return SMOKEYLOOT.GUILD[SMOKEYLOOT.GUILD[name].main].rankIndex < 4
@@ -664,9 +649,7 @@ local function Delay(time, func)
 end
 
 DelayFrame:SetScript("OnUpdate", function()
-	if not FuncQueue[1] then
-		return
-	end
+	if not FuncQueue[1] then return end
 	if GetTime() >= FuncQueue[1].executeTime then
 		FuncQueue[1].func()
 		tremove(FuncQueue, 1)
@@ -1337,7 +1320,7 @@ function SmokeyLootFrame_Update()
 			entryIndex = i + offset
 		end
 
-		if entryIndex > 0 and entryIndex <= numEntries then
+		if tableToUpdate[entryIndex] and entryIndex > 0 and entryIndex <= numEntries then
 			local icon = _G["SmokeyLootEntry"..i.."Icon"]
 			local itemColumn = _G["SmokeyLootEntry"..i.."Text"]
 			local charColumn = _G["SmokeyLootEntry"..i.."Column1"]
@@ -2090,10 +2073,6 @@ function SmokeyLoot_FinishRaidRoutine()
 		local char = SMOKEYLOOT.RAID[i].char
 		local gotHR = SMOKEYLOOT.RAID[i].gotHR
 		local enabled = SMOKEYLOOT.RAID[i].enabled
-		-- remove disabled
-		if enabled == false then
-			tremove(SMOKEYLOOT.RAID, i)
-		end
 		-- check if player got any of their HR items
 		if gotHR then
 			-- find that item and character in DATABASE and remove
@@ -2117,14 +2096,10 @@ function SmokeyLoot_FinishRaidRoutine()
 				end
 			end
 		end
-
-		-- remove if had nothing reserved or mount or reserved when already hr
-		if id == 0 or BlacklistItems[id] or bonus > 90 then
+		-- remove if had nothing reserved or mount or reserved when already hr, or disabled
+		if enabled == false or id == 0 or BlacklistItems[id] or bonus > 90 then
 			tremove(SMOKEYLOOT.RAID, i)
-		end
-
-		-- check if got their sr
-		if bonus == -1 then
+		elseif bonus == -1 then -- check if got their sr
 			for k, v in ipairs(SMOKEYLOOT.DATABASE) do
 				if v.itemID == id and v.char == char then
 					-- remove them from DATABASE
@@ -2174,7 +2149,19 @@ function SmokeyLoot_FinishRaidRoutine()
 		else
 			-- this is regular new entry
 			if newBonus == 10 then
-				tinsert(SMOKEYLOOT.DATABASE, { char = v.char, itemID = v.itemID, bonus = newBonus, item = v.item })
+				local index = getn(SMOKEYLOOT.DATABASE) + 1
+				for k2, v2 in ipairs(SMOKEYLOOT.DATABASE) do
+					if v2.char == v.char and v2.itemID == v.itemID then
+						index = k2
+						newBonus = newBonus + v2.bonus
+						break
+					end
+				end
+				if index then
+					SMOKEYLOOT.DATABASE[index].bonus = newBonus
+				else
+					tinsert(SMOKEYLOOT.DATABASE, { char = v.char, itemID = v.itemID, bonus = newBonus, item = v.item })
+				end
 			elseif newBonus > 10 then
 				-- this is old regular entry
 				for k2, v2 in ipairs(SMOKEYLOOT.DATABASE) do
