@@ -2149,19 +2149,7 @@ function SmokeyLoot_FinishRaidRoutine()
 		else
 			-- this is regular new entry
 			if newBonus == 10 then
-				local index = getn(SMOKEYLOOT.DATABASE) + 1
-				for k2, v2 in ipairs(SMOKEYLOOT.DATABASE) do
-					if v2.char == v.char and v2.itemID == v.itemID then
-						index = k2
-						newBonus = newBonus + v2.bonus
-						break
-					end
-				end
-				if index then
-					SMOKEYLOOT.DATABASE[index].bonus = newBonus
-				else
-					tinsert(SMOKEYLOOT.DATABASE, { char = v.char, itemID = v.itemID, bonus = newBonus, item = v.item })
-				end
+				tinsert(SMOKEYLOOT.DATABASE, { char = v.char, itemID = v.itemID, bonus = newBonus, item = v.item })
 			elseif newBonus > 10 then
 				-- this is old regular entry
 				for k2, v2 in ipairs(SMOKEYLOOT.DATABASE) do
