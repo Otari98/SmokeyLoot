@@ -1652,6 +1652,7 @@ local function DiscardLowRankRolls(rollType)
 	end
 
 	local highestRank = min(unpack(ranks))
+	if highestRank < 2 then highestRank = 2 end -- 0, 1 and 2 are equal
 
 	for k, v in pairs(Rolls[rollType]) do
 		if SMOKEYLOOT.GUILD[k] and tonumber(SMOKEYLOOT.GUILD[k].rankIndex) > highestRank then
