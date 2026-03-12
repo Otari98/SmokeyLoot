@@ -1275,18 +1275,46 @@ function SmokeyLoot_Toggle()
 	end
 end
 
+function SmokeyLootFrame_Autocomplete()
+	-- local text = SmokeyLootFrameSearchBox:GetText()
+	-- local name
+	-- for i = 1, GetNumGuildMembers(true) do
+	-- 	name = GetGuildRosterInfo(i)
+	-- 	if strfind(strlower(name), strlower(text), 1, true) == 1 then
+	-- 		SmokeyLootFrameSearchBox:SetText(name)
+	-- 		SmokeyLootFrameSearchBox:HighlightText(strlen(text), -1)
+	-- 		return
+	-- 	end
+	-- end
+	-- for i = 1, getn(SMOKEYLOOT.DATABASE) do
+	-- 	name = SMOKEYLOOT.DATABASE[i].item
+	-- 	if strfind(strupper(name), strupper(text), 1, true) == 1 then
+	-- 		SmokeyLootFrameSearchBox:SetText(name)
+	-- 		SmokeyLootFrameSearchBox:HighlightText(strlen(text), -1)
+	-- 		return
+	-- 	end
+	-- end
+end
+
 function SmokeyLootFrame_Update()
 	arraywipe(SearchResult)
 
 	local tableToUpdate = SMOKEYLOOT[CurrentTab]
-	local query = strtrim(strlower(SmokeyLootFrameSearchBox:GetText()))
+	local query = strtrim(SmokeyLootFrameSearchBox:GetText())
 
 	if query ~= "" then
-		for i = 1, getn(tableToUpdate) do
-			local item = strlower(tableToUpdate[i].item) or ""
-			local char = strlower(tableToUpdate[i].char or "") or ""
-			if strfind(item, query, 1, true) or strfind(char, query, 1, true) then
-				tinsert(SearchResult, i)
+		if SmokeyLootFrameSearchBoxExact:GetChecked() then
+			for i = 1, getn(tableToUpdate) do
+				local item = tableToUpdate[i].item or ""
+				local char = tableToUpdate[i].char or ""
+				if char == query or item == query then tinsert(SearchResult, i) end
+			end
+		else
+			query = strlower(query)
+			for i = 1, getn(tableToUpdate) do
+				local item = tableToUpdate[i].item or ""
+				local char = tableToUpdate[i].char or ""
+				if strfind(strlower(item), query, 1, true) or strfind(strlower(char), query, 1, true) then tinsert(SearchResult, i) end
 			end
 		end
 	end

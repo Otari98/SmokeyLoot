@@ -31,7 +31,9 @@
 				<FontString name="SmokeyLootFrameStatus" inherits="GameFontNormal" justifyH="LEFT" text="Latest">
 					<Size x="70" y="20"/>
 					<Anchors>
-						<Anchor point="LEFT" relativeTo="SmokeyLootFrameDBDate" relativePoint="RIGHT"/>
+						<Anchor point="LEFT" relativeTo="SmokeyLootFrameDBDate" relativePoint="RIGHT">
+							<Offset x="30" y="0"/>
+						</Anchor>
 					</Anchors>
 				</FontString>
 			</Layer>
@@ -90,30 +92,37 @@
 					</OnShow>
 				</Scripts>
 			</ScrollFrame>
-			<EditBox name="SmokeyLootFrameSearchBox" inherits="InputBoxTemplate" letters="200">
-				<Size x="120" y="32" />
+			<EditBox name="SmokeyLootFrameSearchBox" letters="200" historyLines="0" autoFocus="false">
+				<Size x="160" y="26"/>
+				<Backdrop bgFile="Interface\Tooltips\UI-Tooltip-Background" edgeFile="Interface\Tooltips\UI-Tooltip-Border" tile="true">
+					<TileSize val="16"/>
+					<EdgeSize val="16"/>
+					<BackgroundInsets left="5" right="5" top="5" bottom="5"/>
+					<Color r="0" g="0" b="0"/>
+				</Backdrop>
 				<Anchors>
 					<Anchor point="BOTTOMRIGHT">
-						<Offset x="-30" y="12"/>
+						<Offset x="-30" y="14"/>
 					</Anchor>
 				</Anchors>
+				<Layers>
+					<Layer level="OVERLAY">
+						<Texture name="SmokeyLootFrameSearchBoxIcon" file="Interface\AddOns\SmokeyLoot\Textures\UI-SearchBox-Icon">
+							<Size x="14" y="14"/>
+							<Anchors>
+								<Anchor point="LEFT">
+									<Offset x="8" y="-2"/>
+								</Anchor>
+							</Anchors>
+						</Texture>
+					</Layer>
+				</Layers>
 				<Frames>
-					<Frame>
+					<Button name="SmokeyLootFrameSearchBoxClear">
 						<Size x="14" y="14"/>
 						<Anchors>
-							<Anchor point="LEFT" relativeTo="$parent">
-								<Offset x="1" y="-2" />
-							</Anchor>
-						</Anchors>
-						<Backdrop bgFile="Interface\AddOns\SmokeyLoot\Textures\UI-SearchBox-Icon">
-							<Color r="1.0" g="1.0" b="1.0" a="0.6"/>
-						</Backdrop>
-					</Frame>
-					<Button>
-						<Size x="14" y="14" />
-						<Anchors>
-							<Anchor point="RIGHT" relativeTo="$parent">
-								<Offset x="-3" y="0" />
+							<Anchor point="RIGHT">
+								<Offset x="-8" y="0"/>
 							</Anchor>
 						</Anchors>
 						<Backdrop bgFile="Interface\AddOns\SmokeyLoot\Textures\UI-SearchBox-Clear">
@@ -136,11 +145,28 @@
 							</OnLeave>
 						</Scripts>
 					</Button>
+					<CheckButton name="SmokeyLootFrameSearchBoxExact" inherits="UICheckButtonTemplate">
+						<Size x="18" y="18"/>
+						<HitRectInsets left="0" right="-80" top="0" bottom="0"/>
+						<Anchors>
+							<Anchor point="BOTTOMLEFT" relativePoint="TOPLEFT">
+								<Offset x="3" y="0"/>
+							</Anchor>
+						</Anchors>
+						<Scripts>
+							<OnLoad>
+								SmokeyLootFrameSearchBoxExactText:SetText("Exact match")
+							</OnLoad>
+							<OnClick>
+								SmokeyLootFrame_Update()
+								PlaySound("igMainMenuOptionCheckBoxOn")
+							</OnClick>
+						</Scripts>
+					</CheckButton>
 				</Frames>
 				<Scripts>
 					<OnLoad>
-						this:SetAutoFocus(false)
-						this:SetTextInsets(15, 8, 0, 0)
+						SmokeyLootFrameSearchBoxIcon:SetAlpha(0.75)
 					</OnLoad>
 					<OnEnterPressed>
 						this:ClearFocus()
@@ -151,11 +177,22 @@
 						SmokeyLootScrollFrame:SetVerticalScroll(0)
 					</OnTextChanged>
 					<OnEscapePressed>
+						-- this:SetText("")
 						this:ClearFocus()
 						SmokeyLootFrame_Update()
 					</OnEscapePressed>
+					<OnChar>
+						SmokeyLootFrame_Autocomplete()
+					</OnChar>
+					<OnEditFocusLost>
+						this:HighlightText(0, 0)
+					</OnEditFocusLost>
+					<OnEditFocusGained>
+						this:HighlightText()
+					</OnEditFocusGained>
 				</Scripts>
-				<FontString name="$parentSearchString" inherits="GameFontNormal"/>
+				<FontString name="$parentSearchString" inherits="ChatFontNormal"/>
+				<TextInsets left="25" right="20" top="0" bottom="0"/>
 			</EditBox>
 			<Button name="SmokeyLootImportButton" hidden="true" inherits="UIPanelButtonTemplate" text="Import SR">
 				<Size x="90" y="22"/>
@@ -497,6 +534,9 @@
 			<OnHide>
 				SmokeyLootEditEntryFrame:Hide()
 			</OnHide>
+			<OnMouseUp>
+				SmokeyLootFrameSearchBox:ClearFocus()
+			</OnMouseUp>
 		</Scripts>
 	</Frame>
 	<!-- Minimap Button -->
