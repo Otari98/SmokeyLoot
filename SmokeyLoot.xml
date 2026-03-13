@@ -28,11 +28,11 @@
 						</Anchor>
 					</Anchors>
 				</FontString>
-				<FontString name="SmokeyLootFrameStatus" inherits="GameFontNormal" justifyH="LEFT" text="Latest">
+				<FontString name="SmokeyLootFrameStatus" inherits="GameFontNormal" justifyH="CENTER" text="Latest">
 					<Size x="70" y="20"/>
 					<Anchors>
 						<Anchor point="LEFT" relativeTo="SmokeyLootFrameDBDate" relativePoint="RIGHT">
-							<Offset x="30" y="0"/>
+							<Offset x="15" y="0"/>
 						</Anchor>
 					</Anchors>
 				</FontString>
@@ -40,16 +40,16 @@
 		</Layers>
 		<Frames>
 			<StatusBar name="SmokeyLootFrameProgressBar" drawLayer="BACKGROUND" minValue="0" maxValue="60000" defaultValue="0" hidden="true">
-				<Size x="120" y="10"/>
+				<Size x="100" y="10"/>
 				<Anchors>
-					<Anchor point="LEFT" relativeTo="SmokeyLootFrameDBDate" relativePoint="RIGHT">
-						<Offset x="75" y="0"/>
+					<Anchor point="TOPRIGHT">
+						<Offset x="-45" y="-24"/>
 					</Anchor>
 				</Anchors>
 				<Layers>
 					<Layer level="BORDER">
 						<Texture file="Interface\Tooltips\UI-StatusBar-Border">
-							<Size x="128" y="16"/>
+							<Size x="108" y="16"/>
 							<Anchors>
 								<Anchor point="TOPLEFT">
 									<Offset x="-4" y="4"/>
@@ -98,7 +98,8 @@
 					<TileSize val="16"/>
 					<EdgeSize val="16"/>
 					<BackgroundInsets left="5" right="5" top="5" bottom="5"/>
-					<Color r="0" g="0" b="0"/>
+					<Color r="0" g="0" b="0" a="0.8"/>
+					<BorderColor r="0.6" g="0.6" b="0.6" a="1"/> 
 				</Backdrop>
 				<Anchors>
 					<Anchor point="BOTTOMRIGHT">
@@ -264,8 +265,8 @@
 			<Button name="SmokeyLootPullButton" inherits="UIPanelButtonTemplate" text="Update">
 				<Size x="100" y="22"/>
 				<Anchors>
-					<Anchor point="LEFT" relativeTo="SmokeyLootFrameStatus" relativePoint="RIGHT">
-						<Offset x="12" y="1"/>
+					<Anchor point="TOPRIGHT">
+						<Offset x="-42" y="-16"/>
 					</Anchor>
 				</Anchors>
 				<Scripts>

@@ -715,6 +715,7 @@ function SmokeyLootFrame_OnLoad()
 	PanelTemplates_SetTab(this, 1)
 end
 
+local lookup = {}
 function SmokeyLootFrame_OnEvent(event, arg1, arg2, arg3, arg4)
 	if event == "ADDON_LOADED" and arg1 == "SmokeyLoot" then
 		this:UnregisterEvent("ADDON_LOADED")
@@ -741,19 +742,23 @@ function SmokeyLootFrame_OnEvent(event, arg1, arg2, arg3, arg4)
 		end
 
 	elseif event == "GUILD_ROSTER_UPDATE" then
-		for k in pairs(SMOKEYLOOT.GUILD) do
-			SMOKEYLOOT.GUILD[k] = nil
-		end
+		debug(event)
 
+		listwipe(lookup)
 		for i = 1, GetNumGuildMembers(true) do
 			local name, rank, rankIndex, level, class, zone, note, officerNote, online, status = GetGuildRosterInfo(i)
 			if name then
-				SMOKEYLOOT.GUILD[name] = {}
+				lookup[name] = true
+				if not SMOKEYLOOT.GUILD[name] then SMOKEYLOOT.GUILD[name] = {} end
 				SMOKEYLOOT.GUILD[name].rankName = rank
 				SMOKEYLOOT.GUILD[name].rankIndex = rankIndex
 				SMOKEYLOOT.GUILD[name].class = strupper(class)
 				SMOKEYLOOT.GUILD[name].main = AltRanks[rank] and strtrim(strlower(officerNote)) ~= "guild bank" and strtrim(gsub(officerNote, "%..*", "")) or nil
 			end
+		end
+
+		for name in pairs(SMOKEYLOOT.GUILD) do
+			if not lookup[name] then SMOKEYLOOT.GUILD[name] = nil end
 		end
 
 		if SmokeyLootFrame:IsShown() then
@@ -766,6 +771,7 @@ function SmokeyLootFrame_OnEvent(event, arg1, arg2, arg3, arg4)
 		SmokeyLoot_EnableRaidControls()
 
 	elseif event == "RAID_ROSTER_UPDATE" then
+		debug(event)
 		SmokeyLoot_UpdateRollers()
 		
 	elseif event == "PLAYER_ENTERING_WORLD" then
