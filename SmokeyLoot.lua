@@ -2401,21 +2401,12 @@ function SmokeyLoot_SetRemoteVersion()
 end
 
 function SmokeyLoot_GetLootMasterName()
-	local method, partyIndex = GetLootMethod()
-
-	if method ~= "master" then
-		return nil, false
-
-	elseif partyIndex == 0 then
-		return UnitName("player"), true
-
-	elseif partyIndex then
-		return UnitName("party"..partyIndex), true
-
-	elseif Master then
-		return Master, true
-	end
-
+	local method, partyIndex, raidIndex = GetLootMethod()
+	if method ~= "master" then return nil, false end
+	if partyIndex == 0 then return UnitName("player"), true end
+	if partyIndex then return UnitName("party"..partyIndex), true end
+	if raidIndex then return UnitName("raid"..raidIndex), true end
+	if Master then return Master, true end
 	return nil, true
 end
 
