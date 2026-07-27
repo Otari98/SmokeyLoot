@@ -2281,8 +2281,10 @@ function SmokeyLoot_Push(player)
 	end
 
 	dbPushFrame:SetScript("OnUpdate", function()
-		SendAddonMessage("SmokeyLoot", count.."="..messages[count], "GUILD")
-		count = count + 1
+		if messages[count] then
+			SendAddonMessage("SmokeyLoot", count.."="..messages[count], "GUILD")
+			count = count + 1
+		end
 
 		if count > getn(messages) then
 			dbPushFrame:SetScript("OnUpdate", nil)
@@ -2392,12 +2394,13 @@ function SmokeyLoot_SetRemoteVersion()
 
 	GuildRoster()
 	SMOKEYLOOT.DATABASE.date = time()
-
-	local guildInfo = gsub(GetGuildInfoText(), "\n%a*%d+$", "\n"..UnitName("player")..SMOKEYLOOT.DATABASE.date)
-
+	local stamp = UnitName("player")..SMOKEYLOOT.DATABASE.date
+	local guildInfo = GetGuildInfoText()
+	guildInfo = gsub(GetGuildInfoText(), "\n%a*%d+$", "")
+	guildInfo = guildInfo.."\n"..stamp
 	SetGuildInfoText(guildInfo)
 
-	debug("new version set", UnitName("player")..SMOKEYLOOT.DATABASE.date)
+	debug("new version set", stamp)
 end
 
 function SmokeyLoot_GetLootMasterName()
