@@ -56,13 +56,13 @@
 		<DisabledFont inherits="GameFontDisable" justifyH="LEFT"/>
 		<Scripts>
 			<OnEnter>
-				SmokeyLootEntry_OnEnter()
+				SmokeyLoot.Entry_OnEnter()
 			</OnEnter>
 			<OnLeave>
-				SmokeyLootEntry_OnLeave()
+				SmokeyLoot.Entry_OnLeave()
 			</OnLeave>
 			<OnClick>
-				SmokeyLootEntry_OnClick()
+				SmokeyLoot.Entry_OnClick()
 			</OnClick>
 		</Scripts>
 	</Button>
@@ -70,7 +70,7 @@
 		<Size x="64" y="28"/>
 		<Scripts>
 			<OnClick>
-				SmokeyLoot_Roll(this.roll)
+				SmokeyLoot.Roll(this.roll)
 			</OnClick>
 			<OnEnter>
 				GameTooltip:SetOwner(this, "ANCHOR_RIGHT")
@@ -186,19 +186,17 @@
 				</Anchors>
 				<Scripts>
 					<OnClick>
-						SmokeyLoot_StartOrEndRoll()
+						SmokeyLoot.StartOrEndRoll(this:GetParent().lootSlot)
 					</OnClick>
 				</Scripts>
 			</Button>
 			<Button name="$parentCancelRoll" inherits="SmokeyMenuButtonTemplate" text="Cancel">
 				<Anchors>
-					<Anchor point="LEFT" relativeTo="$parentStartOrEndRoll" relativePoint="RIGHT">
-						<Offset x="0" y="0"/>
-					</Anchor>
+					<Anchor point="LEFT" relativeTo="$parentStartOrEndRoll" relativePoint="RIGHT"/>
 				</Anchors>
 				<Scripts>
 					<OnClick>
-						SmokeyLoot_CancelRoll()
+						SmokeyLoot.CancelRoll()
 					</OnClick>
 				</Scripts>
 			</Button>
@@ -209,7 +207,7 @@
 				this.hasItem = 1
 			</OnLoad>
 			<OnEnter>
-				SmokeyLootButton_OnEnter()
+				SmokeyLoot.Button_OnEnter()
 			</OnEnter>
 			<OnLeave>
 				GameTooltip:Hide()
@@ -219,7 +217,7 @@
 				CursorOnUpdate()
 			</OnUpdate>
 			<OnClick>
-				SmokeyLootButton_OnClick()
+				SmokeyLoot.Button_OnClick()
 			</OnClick>
 		</Scripts>
 	</Button>

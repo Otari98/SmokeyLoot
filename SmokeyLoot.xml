@@ -85,10 +85,10 @@
 				</Backdrop> -->
 				<Scripts>
 					<OnVerticalScroll>
-						FauxScrollFrame_OnVerticalScroll(16, SmokeyLootFrame_Update)
+						FauxScrollFrame_OnVerticalScroll(16, SmokeyLoot.UpdateFrame)
 					</OnVerticalScroll>
 					<OnShow>
-						SmokeyLootFrame_Update()
+						SmokeyLoot.UpdateFrame()
 					</OnShow>
 				</Scripts>
 			</ScrollFrame>
@@ -159,7 +159,7 @@
 								SmokeyLootFrameSearchBoxExactText:SetText("Exact match")
 							</OnLoad>
 							<OnClick>
-								SmokeyLootFrame_Update()
+								SmokeyLoot.UpdateFrame()
 								PlaySound("igMainMenuOptionCheckBoxOn")
 							</OnClick>
 						</Scripts>
@@ -171,19 +171,19 @@
 					</OnLoad>
 					<OnEnterPressed>
 						this:ClearFocus()
-						SmokeyLootFrame_Update()
+						SmokeyLoot.UpdateFrame()
 					</OnEnterPressed>
 					<OnTextChanged>
-						SmokeyLootFrame_Update()
+						SmokeyLoot.UpdateFrame()
 						SmokeyLootScrollFrame:SetVerticalScroll(0)
 					</OnTextChanged>
 					<OnEscapePressed>
 						-- this:SetText("")
 						this:ClearFocus()
-						SmokeyLootFrame_Update()
+						SmokeyLoot.UpdateFrame()
 					</OnEscapePressed>
 					<OnChar>
-						SmokeyLootFrame_Autocomplete()
+						SmokeyLoot.Autocomplete()
 					</OnChar>
 					<OnEditFocusLost>
 						this:HighlightText(0, 0)
@@ -220,7 +220,7 @@
 						this:Disable()
 					</OnLoad>
 					<OnClick>
-						SmokeyLootFinishRaidButton_OnClick()
+						SmokeyLoot.FinishRaidButton_OnClick()
 					</OnClick>
 				</Scripts>
 			</Button>
@@ -236,10 +236,10 @@
 						this:Disable()
 					</OnLoad>
 					<OnShow>
-						SmokeyLoot_EnableRaidControls()
+						SmokeyLoot.EnableRaidControls()
 					</OnShow>
 					<OnClick>
-						SmokeyLootClearButton_OnClick()
+						SmokeyLoot.ClearButton_OnClick()
 					</OnClick>
 				</Scripts>
 			</Button>
@@ -255,10 +255,10 @@
 						this:Disable()
 					</OnLoad>
 					<OnShow>
-						SmokeyLootAddButton_OnShow()
+						SmokeyLoot.AddButton_OnShow()
 					</OnShow>
 					<OnClick>
-						SmokeyLootAddButton_OnClick()
+						SmokeyLoot.AddButton_OnClick()
 					</OnClick>
 				</Scripts>
 			</Button>
@@ -271,7 +271,7 @@
 				</Anchors>
 				<Scripts>
 					<OnClick>
-						SmokeyLoot_Pull()
+						SmokeyLoot.Pull()
 					</OnClick>
 				</Scripts>
 			</Button>
@@ -286,7 +286,7 @@
 				<Scripts>
 					<OnClick>
 						PanelTemplates_Tab_OnClick(SmokeyLootFrame)
-						SmokeyLoot_SwitchTab("DATABASE")
+						SmokeyLoot.SwitchTab("DATABASE")
 					</OnClick>
 					<OnEnter>
 						GameTooltip:SetOwner(this, "ANCHOR_RIGHT")
@@ -308,7 +308,7 @@
 				<Scripts>
 					<OnClick>
 						PanelTemplates_Tab_OnClick(SmokeyLootFrame)
-						SmokeyLoot_SwitchTab("HR")
+						SmokeyLoot.SwitchTab("HR")
 					</OnClick>
 					<OnEnter>
 						GameTooltip:SetOwner(this, "ANCHOR_RIGHT")
@@ -330,7 +330,7 @@
 				<Scripts>
 					<OnClick>
 						PanelTemplates_Tab_OnClick(SmokeyLootFrame)
-						SmokeyLoot_SwitchTab("RAID")
+						SmokeyLoot.SwitchTab("RAID")
 					</OnClick>
 					<OnEnter>
 						GameTooltip:SetOwner(this, "ANCHOR_RIGHT")
@@ -468,7 +468,7 @@
 						</Anchors>
 						<Scripts>
 							<OnClick>
-								SmokeyLootEditEntryFrameCancelButton_OnClick()
+								SmokeyLootEditEntryFrame:Hide()
 							</OnClick>
 						</Scripts>
 					</Button>
@@ -481,7 +481,7 @@
 						</Anchors>
 						<Scripts>
 							<OnClick>
-								SmokeyLootEditEntryFrameAcceptButton_OnClick()
+								SmokeyLoot.EditEntryFrameAcceptButton_OnClick()
 							</OnClick>
 						</Scripts>
 					</Button>
@@ -494,7 +494,7 @@
 						</Anchors>
 						<Scripts>
 							<OnClick>
-								SmokeyLootEditEntryFrameDeleteButton_OnClick()
+								SmokeyLoot.EditEntryFrameDeleteButton_OnClick()
 							</OnClick>
 						</Scripts>
 					</Button>
@@ -504,7 +504,7 @@
 						this:RegisterForDrag("LeftButton")
 					</OnLoad>
 					<OnHide>
-						SmokeyLootEditEntryFrame_OnHide()
+						SmokeyLoot.EditEntryFrame_OnHide()
 					</OnHide>
 					<OnDragStart>
 						this:StartMoving()
@@ -517,10 +517,10 @@
 		</Frames>
 		<Scripts>
 			<OnLoad>
-				SmokeyLootFrame_OnLoad()
+				SmokeyLoot.OnLoad()
 			</OnLoad>
 			<OnEvent>
-				SmokeyLootFrame_OnEvent(event, arg1, arg2, arg3, arg4)
+				SmokeyLoot.OnEvent(event, arg1, arg2, arg3, arg4)
 			</OnEvent>
 			<OnDragStart>
 				if this:IsMovable() then
@@ -597,7 +597,7 @@
 			</OnLeave>
 			<OnMouseUp>
 				if arg1 == "LeftButton" then
-					SmokeyLoot_Toggle()
+					SmokeyLoot.Toggle()
 				end
 			</OnMouseUp>
 		</Scripts>
@@ -784,7 +784,7 @@
 				</Anchors>
 				<Scripts>
 					<OnClick>
-						SmokeyLoot_Roll("PASS")
+						SmokeyLoot.Roll("PASS")
 					</OnClick>
 					<OnEnter>
 						GameTooltip:SetOwner(this, "ANCHOR_RIGHT")
@@ -882,7 +882,7 @@
 						GameTooltip:Hide()
 					</OnLeave>
 					<OnClick>
-						SmokeyLoot_AnnounceLoot()
+						SmokeyLoot.AnnounceLoot()
 					</OnClick>
 				</Scripts>
 			</Button>
@@ -903,7 +903,7 @@
 						GameTooltip:Hide()
 					</OnLeave>
 					<OnClick>
-						SmokeyLootMLFrame_Update()
+						SmokeyLoot.UpdateMLFrame()
 						PlaySound("igMainMenuOptionCheckBoxOn")
 					</OnClick>
 				</Scripts>
@@ -973,7 +973,7 @@
 				end
 			</OnDragStop>
 			<!-- <OnShow>
-				SmokeyLootMLFrame_Update()
+				SmokeyLoot.UpdateMLFrame()
 			</OnShow> -->
 		</Scripts>
 	</Frame>
@@ -1038,7 +1038,7 @@
 				</Anchors>
 				<Scripts>
 					<OnClick>
-						SmokeyLoot_Import()
+						SmokeyLoot.Import()
 					</OnClick>
 				</Scripts>
 			</Button>
@@ -1066,7 +1066,7 @@
 					</OnShow>
 				</Scripts>
 			</CheckButton>
-			<CheckButton name="$parentEnableBongoAltRule" inherits="UIOptionsCheckButtonTemplate" checked="false">
+			<CheckButton name="$parentEnableBongoAltRule" inherits="UIOptionsCheckButtonTemplate" checked="false" hidden="true">
 				<Size x="32" y="32"/>
 				<Anchors>
 					<Anchor point="TOPLEFT" relativeTo="$parentEnablePlusOne" relativePoint="BOTTOMLEFT">
