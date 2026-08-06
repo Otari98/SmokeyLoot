@@ -12,121 +12,121 @@ SmokeyLoot = {}
 
 SmokeyLoot.Bosses = {
 	-- Molten Core
-	"Incindis",
-	"Lucifron",
-	"Magmadar",
-	"Garr",
-	"Shazzrah",
-	"Baron Geddon",
-	"Golemagg the Incinerator",
-	"Basalthar",
-	"Smoldaris",
-	"Sorcerer-Thane Thaurissan",
-	"Sulfuron Harbinger",
-	"Majordomo Executus",
-	"Ragnaros",
+	["Incindis"] = true,
+	["Lucifron"] = true,
+	["Magmadar"] = true,
+	["Garr"] = true,
+	["Shazzrah"] = true,
+	["Baron Geddon"] = true,
+	["Golemagg the Incinerator"] = true,
+	["Basalthar"] = true,
+	["Smoldaris"] = true,
+	["Sorcerer-Thane Thaurissan"] = true,
+	["Sulfuron Harbinger"] = true,
+	["Majordomo Executus"] = true,
+	["Ragnaros"] = true,
 	-- Onyxia's Lair
-	"Onyxia",
-	"Broodcommander Axelus",
+	["Onyxia"] = true,
+	["Broodcommander Axelus"] = true,
 	-- Lower Karazhan Halls
-	"Master Blacksmith Rolfen",
-	"Brood Queen Araxxna",
-	"Grizikil",
-	"Clawlord Howlfang",
-	"Lord Blackwald II",
-	"Moroes",
+	["Master Blacksmith Rolfen"] = true,
+	["Brood Queen Araxxna"] = true,
+	["Grizikil"] = true,
+	["Clawlord Howlfang"] = true,
+	["Lord Blackwald II"] = true,
+	["Moroes"] = true,
 	-- Zul'Gurub
-	"High Priestess Jeklik",
-	"High Priest Venoxis",
-	"Witherbark Speaker",
-	"High Priestess Mar'li",
-	"Vilebranch Speaker",
-	"Broodlord Mandokir",
-	"Ohgan",
-	"Gri'lek",
-	"Hazza'rah",
-	"Renataki",
-	"Wushoolay",
-	"Gahz'ranka",
-	"High Priest Thekal",
-	"Zealot Zath",
-	"Zealot Lor'Khan",
-	"High Priestess Arlokk",
-	"Jin'do the Hexxer",
-	"Hakkar",
+	["High Priestess Jeklik"] = true,
+	["High Priest Venoxis"] = true,
+	["Witherbark Speaker"] = true,
+	["High Priestess Mar'li"] = true,
+	["Vilebranch Speaker"] = true,
+	["Broodlord Mandokir"] = true,
+	["Ohgan"] = true,
+	["Gri'lek"] = true,
+	["Hazza'rah"] = true,
+	["Renataki"] = true,
+	["Wushoolay"] = true,
+	["Gahz'ranka"] = true,
+	["High Priest Thekal"] = true,
+	["Zealot Zath"] = true,
+	["Zealot Lor'Khan"] = true,
+	["High Priestess Arlokk"] = true,
+	["Jin'do the Hexxer"] = true,
+	["Hakkar"] = true,
 	-- Ruins of Ahn'Qiraj
-	"Kurinnaxx",
-	"General Rajaxx",
-	"Moam",
-	"Buru the Gorger",
-	"Ayamiss the Hunter",
-	"Ossirian the Unscarred",
+	["Kurinnaxx"] = true,
+	["General Rajaxx"] = true,
+	["Moam"] = true,
+	["Buru the Gorger"] = true,
+	["Ayamiss the Hunter"] = true,
+	["Ossirian the Unscarred"] = true,
 	-- Blackwing Lair
-	"Razorgore the Untamed",
-	"Vaelastrasz the Corrupt",
-	"Broodlord Lashlayer",
-	"Firemaw",
-	"Ebonroc",
-	"Flamegor",
-	"Chromaggus",
-	"Nefarian",
-	"Ezzel Darkbrewer",
+	["Razorgore the Untamed"] = true,
+	["Vaelastrasz the Corrupt"] = true,
+	["Broodlord Lashlayer"] = true,
+	["Firemaw"] = true,
+	["Ebonroc"] = true,
+	["Flamegor"] = true,
+	["Chromaggus"] = true,
+	["Nefarian"] = true,
+	["Ezzel Darkbrewer"] = true,
 	-- Emerald Sanctum
-	"Erennius",
-	"Solnius the Awakener",
+	["Erennius"] = true,
+	["Solnius the Awakener"] = true,
 	-- Temple of Ahn'Qiraj
-	"The Prophet Skeram",
-	"Vem",
-	"Lord Kri",
-	"Princess Yauj",
-	"Battle Guard Sartura",
-	"Fankriss the Unyielding",
-	"Viscidus",
-	"Princess Huhuran",
-	"Emperor Vek'lor",
-	"Emperor Vek'nilash",
-	"Ouro",
-	"C'Thun",
+	["The Prophet Skeram"] = true,
+	["Vem"] = true,
+	["Lord Kri"] = true,
+	["Princess Yauj"] = true,
+	["Battle Guard Sartura"] = true,
+	["Fankriss the Unyielding"] = true,
+	["Viscidus"] = true,
+	["Princess Huhuran"] = true,
+	["Emperor Vek'lor"] = true,
+	["Emperor Vek'nilash"] = true,
+	["Ouro"] = true,
+	["C'Thun"] = true,
 	-- Naxxramas
-	"Patchwerk",
-	"Grobbulus",
-	"Gluth",
-	"Thaddius",
-	"Anub'Rekhan",
-	"Grand Widow Faerlina",
-	"Maexxna",
-	"Noth the Plaguebringer",
-	"Heigan the Unclean",
-	"Loatheb",
-	"Instructor Razuvious",
-	"Gothik the Harvester",
-	"Thane Korth'azz",
-	"Lady Blaumeux",
-	"Highlord Mograine",
-	"Sir Zeliek",
-	"Sapphiron",
-	"Kel'Thuzad",
+	["Patchwerk"] = true,
+	["Grobbulus"] = true,
+	["Gluth"] = true,
+	["Thaddius"] = true,
+	["Anub'Rekhan"] = true,
+	["Grand Widow Faerlina"] = true,
+	["Maexxna"] = true,
+	["Noth the Plaguebringer"] = true,
+	["Heigan the Unclean"] = true,
+	["Loatheb"] = true,
+	["Instructor Razuvious"] = true,
+	["Gothik the Harvester"] = true,
+	["Thane Korth'azz"] = true,
+	["Lady Blaumeux"] = true,
+	["Highlord Mograine"] = true,
+	["Sir Zeliek"] = true,
+	["Sapphiron"] = true,
+	["Kel'Thuzad"] = true,
 	-- Upper karazhan Halls
-	"Keeper Gnarlmoon",
-	"Ley-Watcher Incantagos",
-	"Anomalus",
-	"Echo of Medivh",
-	"King",
-	"Sanv Tas'dal",
-	"Rupturan the Broken",
-	"Kruul",
-	"Mephistroth",
+	["Keeper Gnarlmoon"] = true,
+	["Ley-Watcher Incantagos"] = true,
+	["Anomalus"] = true,
+	["Echo of Medivh"] = true,
+	["King"] = true,
+	["Sanv Tas'dal"] = true,
+	["Rupturan the Broken"] = true,
+	["Kruul"] = true,
+	["Mephistroth"] = true,
 	-- Timbermaw Hold
-	"Karrsh the Sentinel",
-	"Rotgowl",
-	"Loktanag the Vile",
-	"Ormanos the Cracked",
-	"Chieftain Partath",
-	"Archdruid Kronn",
-	"Selenaxx Foulheart",
-	"Trioch the Devourer",
-	"Ursol",
-	"Peroth'arn"
+	["Karrsh the Sentinel"] = true,
+	["Rotgowl"] = true,
+	["Loktanag the Vile"] = true,
+	["Ormanos the Cracked"] = true,
+	["Chieftain Partath"] = true,
+	["Archdruid Kronn"] = true,
+	["Selenaxx Foulheart"] = true,
+	["Trioch the Devourer"] = true,
+	["Ursol"] = true,
+	["Peroth'arn"] = true,
 }
 
 local Patterns = {
@@ -148,6 +148,7 @@ local debugMessages = false
 local Pulling = false
 local Pushing = false
 local PushAfter = false
+local TargetChangeRegistered = false
 
 local LootButtonsMax = 6
 local MaxEntries = 32
@@ -796,13 +797,17 @@ function SmokeyLoot.RegisterTargetChange()
 	local method, partyIndex, raidIndex = GetLootMethod()
 	local inInstance, instanceType = IsInInstance()
 	if method ~= "master" and GetNumRaidMembers() > 0 and inInstance and instanceType == "raid" and getn(SMOKEYLOOT.RAID) > 0 and IsRaidLeader() then
-		SmokeyLootFrame:RegisterEvent("PLAYER_TARGET_CHANGED")
-		debugprint("registered PLAYER_TARGET_CHANGED")
-		return true
+		if not TargetChangeRegistered then
+			SmokeyLootFrame:RegisterEvent("PLAYER_TARGET_CHANGED")
+			debugprint("registered PLAYER_TARGET_CHANGED")
+			TargetChangeRegistered = true
+		end
 	else
-		SmokeyLootFrame:UnregisterEvent("PLAYER_TARGET_CHANGED")
-		debugprint("unregistered PLAYER_TARGET_CHANGED")
-		return false
+		if TargetChangeRegistered then
+			SmokeyLootFrame:UnregisterEvent("PLAYER_TARGET_CHANGED")
+			debugprint("unregistered PLAYER_TARGET_CHANGED")
+			TargetChangeRegistered = false
+		end
 	end
 end
 
@@ -1367,6 +1372,7 @@ function SmokeyLoot.OnEvent(event, arg1, arg2, arg3, arg4)
 	elseif event == "PLAYER_TARGET_CHANGED" then
 		local targetName = UnitName("target")
 		if not targetName then return end
+		debugprint(event, targetName)
 		if SmokeyLoot.Bosses[targetName] then
 			SetLootMethod("master", (UnitName("player")))
 		end
@@ -2145,6 +2151,7 @@ function SmokeyLoot.Import()
 	SmokeyLoot.UpdateFrame()
 	SmokeyLoot.EnableRaidControls()
 	SmokeyLoot.PushRaid()
+	SmokeyLoot.RegisterTargetChange()
 end
 
 function SmokeyLoot.Export()
@@ -2303,7 +2310,7 @@ function SmokeyLoot.FinishRaidRoutine()
 	arraywipe(SMOKEYLOOT.RAID)
 	listwipe(SMOKEYLOOT.RAID)
 
-	SmokeyLoot.PushRaid(1)
+	SmokeyLoot.PushRaid(true)
 	SmokeyLoot.SetRemoteVersion()
 	SmokeyLoot.UpdateHR()
 	SmokeyLoot.UpdateFrame()
@@ -2404,6 +2411,7 @@ function SmokeyLoot.PushRaid(clear)
 	end
 
 	if clear then
+		debugprint("Clearing raid")
 		SendAddonMessage("SmokeyLoot", "R_clear", "RAID")
 		return
 	end
@@ -2780,7 +2788,7 @@ end
 function SmokeyLoot.ClearButton_OnClick()
 	arraywipe(SMOKEYLOOT.RAID)
 	SmokeyLoot.EnableRaidControls()
-	SmokeyLoot.PushRaid(1)
+	SmokeyLoot.PushRaid(true)
 	SmokeyLoot.UpdateFrame()
 end
 
