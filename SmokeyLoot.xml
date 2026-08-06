@@ -399,9 +399,16 @@
 								</Anchor>
 							</Anchors>
 						</FontString>
-						<FontString name="$parentPluses" inherits="GameFontNormal" justifyH="LEFT" text="Pluses:" hidden="true">
+						<FontString name="$parentPluses" inherits="GameFontNormal" justifyH="LEFT" text="Pluses:">
 							<Anchors>
 								<Anchor point="TOPLEFT" relativeTo="$parentBonus" relativePoint="BOTTOMLEFT">
+									<Offset x="0" y="-17"/>
+								</Anchor>
+							</Anchors>
+						</FontString>
+						<FontString name="$parentEnabled" inherits="GameFontNormal" justifyH="LEFT" text="Enabled:">
+							<Anchors>
+								<Anchor point="TOPLEFT" relativeTo="$parentPluses" relativePoint="BOTTOMLEFT">
 									<Offset x="0" y="-17"/>
 								</Anchor>
 							</Anchors>
@@ -459,6 +466,18 @@
 							</Anchor>
 						</Anchors>
 					</EditBox>
+					<CheckButton name="$parentEnabledCheckBox" inherits="UICheckButtonTemplate">
+						<Anchors>
+							<Anchor point="TOPLEFT" relativeTo="$parentEditBox5" relativePoint="BOTTOMLEFT">
+								<Offset x="-5" y="-5"/>
+							</Anchor>
+						</Anchors>
+						<Scripts>
+							<OnClick>
+								PlaySound("igMainMenuOptionCheckBoxOn")
+							</OnClick>
+						</Scripts>
+					</CheckButton>
 					<Button name="$parentCancelButton" inherits="UIPanelButtonTemplate" text="CANCEL">
 						<Size x="80" y="22"/>
 						<Anchors>
@@ -979,7 +998,7 @@
 	</Frame>
 	<!-- Import frame -->
 	<Frame name="SmokeyLootImportFrame" movable="true" parent="UIParent" enableMouse="true" toplevel="true" frameStrata="DIALOG" hidden="true">
-		<Size x="420" y="560"/>
+		<Size x="420" y="420"/>
 		<Anchors>
 			<Anchor point="CENTER"/>
 		</Anchors>
@@ -996,19 +1015,16 @@
 				</Anchors>
 			</Button>
 			<ScrollFrame name="SmokeyLootImportFrameScrollFrame" inherits="UIPanelScrollFrameTemplate">
-				<Size x="330" y="440"/>
+				<Size x="330" y="300"/>
 				<Anchors>
 					<Anchor point="TOP">
 						<Offset x="-8" y="-28"/>
 					</Anchor>
 				</Anchors>
 				<ScrollChild>
-					<EditBox name="SmokeyImportText" multiLine="true" letters="5000">
-						<Size x="388" y="488"/>
+					<EditBox name="SmokeyImportText" multiLine="true" letters="5000" autoFocus="true">
+						<Size x="388" y="348"/>
 						<Scripts>
-							<OnLoad>
-								this:SetAutoFocus(true)
-							</OnLoad>
 							<OnShow>
 								this:HighlightText()
 							</OnShow>
@@ -1030,7 +1046,7 @@
 				</ScrollChild>
 			</ScrollFrame>
 			<Button name="$parentOkButton" inherits="UIPanelButtonTemplate" text="OK">
-				<Size x="50" y="20"/>
+				<Size x="60" y="22"/>
 				<Anchors>
 					<Anchor point="BOTTOM">
 						<Offset x="0" y="22"/>
@@ -1045,8 +1061,8 @@
 			<CheckButton name="$parentEnablePlusOne" inherits="UIOptionsCheckButtonTemplate" checked="true">
 				<Size x="32" y="32"/>
 				<Anchors>
-					<Anchor point="BOTTOMLEFT">
-						<Offset x="20" y="50"/>
+					<Anchor point="TOPLEFT" relativeTo="$parentOkButton" relativePoint="TOPLEFT">
+						<Offset x="-150" y="5"/>
 					</Anchor>
 				</Anchors>
 				<Layers>

@@ -482,6 +482,7 @@ local function SortRaidByDisabled()
 	end
 	for i = getn(SMOKEYLOOT.RAID), 1, -1 do
 		if SMOKEYLOOT.RAID[i].delete then
+			SMOKEYLOOT.RAID[i].delete = nil
 			tremove(SMOKEYLOOT.RAID, i)
 		end
 	end
@@ -2582,7 +2583,8 @@ function SmokeyLoot.ToggleEditEntryFrame(id, add)
 		SmokeyLootEditEntryFrameEditBox4:SetText(add and 0 or SMOKEYLOOT.DATABASE[id].bonus)
 		SmokeyLootEditEntryFrameEditBox5:Hide()
 		SmokeyLootEditEntryFramePluses:Hide()
-
+		SmokeyLootEditEntryFrameEnabled:Hide()
+		SmokeyLootEditEntryFrameEnabledCheckBox:Hide()
 		SmokeyLootEditEntryFrameHint:SetText("Shift-click entries or chat links to copy paste values")
 
 	elseif CurrentTab == "RAID" then
@@ -2595,6 +2597,9 @@ function SmokeyLoot.ToggleEditEntryFrame(id, add)
 		SmokeyLootEditEntryFrameEditBox2:SetNumber(add and 0 or SMOKEYLOOT.RAID[id].itemID)
 		SmokeyLootEditEntryFrameEditBox3:SetText(add and "" or SMOKEYLOOT.RAID[id].char)
 		SmokeyLootEditEntryFrameEditBox4:SetText(add and 0 or SMOKEYLOOT.RAID[id].bonus)
+		SmokeyLootEditEntryFrameEnabled:Show()
+		SmokeyLootEditEntryFrameEnabledCheckBox:Show()
+		SmokeyLootEditEntryFrameEnabledCheckBox:SetChecked(SMOKEYLOOT.RAID[id].enabled)
 
 		if SMOKEYLOOT.RAID.isPlusOneRaid then
 			SmokeyLootEditEntryFrameEditBox5:SetNumber(add and 0 or SMOKEYLOOT.RAID[id].pluses)
@@ -2634,6 +2639,7 @@ function SmokeyLoot.EditEntryFrameAcceptButton_OnClick()
 	local newItemID = SmokeyLootEditEntryFrameEditBox2:GetNumber()
 	local newChar = strtrim(SmokeyLootEditEntryFrameEditBox3:GetText())
 	local newBonus = tonumber(strtrim(SmokeyLootEditEntryFrameEditBox4:GetText()))
+	local newEnabled = SmokeyLootEditEntryFrameEnabledCheckBox:GetChecked() and true or false
 	
 	if tab == "DATABASE" then
 		if not IsOfficer(UnitName("player")) then
@@ -2697,6 +2703,7 @@ function SmokeyLoot.EditEntryFrameAcceptButton_OnClick()
 		SMOKEYLOOT.RAID[id].itemID = newItemID
 		SMOKEYLOOT.RAID[id].char = newChar
 		SMOKEYLOOT.RAID[id].pluses = newPluses
+		SMOKEYLOOT.RAID[id].enabled = newEnabled
 
 		SmokeyLoot.PushRaid()
 	end
