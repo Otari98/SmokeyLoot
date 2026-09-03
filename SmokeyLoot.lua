@@ -749,6 +749,23 @@ local function LootPopupOnUpdate()
 	SmokeyLootPopupFrame:SetScript("OnUpdate", nil)
 end
 
+local LootSourceFrame = CreateFrame("Frame", "SmokeyLootLootSourceFrame", WorldFrame)
+LootSourceFrame:Hide()
+LootSourceFrame.elapsed = 0
+LootSourceFrame:SetScript("OnUpdate", function(self, elapsed)
+	if not self then self = this end
+	if not elapsed then elapsed = arg1 end
+	self.elapsed = self.elapsed + elapsed
+	if self.elapsed < 0.2 then return end
+	self.elapsed = 0
+	local guid = SmokeyItem.lootSource
+	if guid and guid ~= "chest" then
+		if not UnitExists(guid) or not UnitIsDead(guid) then
+			SmokeyLoot.CancelRoll()
+		end
+	end
+end)
+
 function SmokeyLoot.OnLoad()
 	tinsert(UISpecialFrames, "SmokeyLootFrame")
 	this:RegisterForDrag("LeftButton")
@@ -1105,9 +1122,6 @@ function SmokeyLoot.OnEvent(event, arg1, arg2, arg3, arg4)
 		end
 
 	elseif event == "LOOT_CLOSED" then
-		if SmokeyItem.id and SmokeyItem.lootSource == CurrentLootSource and CurrentLootSource ~= "chest" and not UnitIsDead(CurrentLootSource) then
-			SmokeyLoot.CancelRoll()
-		end
 		CurrentLootSource = nil
 		SmokeyLootMLFrame:Hide()
 
@@ -1972,6 +1986,7 @@ function SmokeyLoot.StartOrEndRoll(slot)
 
 		SendChatMessage("Starting roll on "..link, IsRaidOfficer() and "RAID_WARNING" or "RAID")
 		SendAddonMessage("SmokeyLoot", format("StartRoll:%d;%s;%s;%s;%s;%d;%d;%s", itemID, itemName, itemTexture, SmokeyItem.candidatesSR, SmokeyItem.candidates, itemCount, itemQuality, link), "RAID")
+		LootSourceFrame:Show()
 
 	else
 		-- End Roll
@@ -2023,6 +2038,7 @@ function SmokeyLoot.CancelRoll()
 	SmokeyItem:Reset()
 	SmokeyLoot.UpdateMLFrame()
 	SmokeyLoot.UpdateRollers()
+	LootSourceFrame:Hide()
 end
 
 function SmokeyLoot.UpdateMLFrame()
