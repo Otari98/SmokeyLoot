@@ -9,6 +9,28 @@ local tinsert = table.insert
 local tremove = table.remove
 
 SmokeyLoot = {}
+SmokeyItem = {}
+SmokeyLoot.Item = SmokeyItem
+
+function SmokeyItem:Reset()
+	self.id = nil
+	self.link = nil
+	self.slot = nil
+	self.winner = nil
+	self.winType = nil
+	self.winRoll = 0
+	self.tmogWinner = nil
+	self.tmogWinRoll = 0
+	self.tmogIgnored = nil
+	self.lowestPlus = 420
+	self.lowestHR = 420
+	self.lootSource = nil
+	self.recieved = nil
+	self.givenTo = nil
+	self.candidates = ""
+	self.candidatesSR = ""
+end
+SmokeyItem:Reset()
 
 SmokeyLoot.Bosses = {
 	-- Molten Core
@@ -129,6 +151,12 @@ SmokeyLoot.Bosses = {
 	["Peroth'arn"] = true,
 }
 
+local fmt = {
+	trade = "|cffffffff|Hplayer:%s|h[%s]|h|r (%d %s) trade %s to |cffffffff|Hplayer:%s|h[%s]|h|r (%d %s)",
+	tradeWhisper = "Please, trade %s to |cffffffff|Hplayer:%s|h[%s]|h|r after collecting transmog appearance. <3",
+	win = "|cffffffff|Hplayer:%s|h[%s]|h|r wins %s (%d %s)",
+}
+
 local Patterns = {
 	newMaster = gsub(ERR_NEW_LOOT_MASTER_S, "%%s", "(.+)"), -- "(.+) is now the loot master."
 	rollResult = gsub(gsub(RANDOM_ROLL_RESULT, "%%s", "(.+)"), "%%d %(%%d%-%%d%)", "(%%d+) %%(%%d%%-(%%d+)%%)"), -- "(.+) rolls (%d+) %((%d+)%-(%d+)%)"
@@ -136,6 +164,7 @@ local Patterns = {
 	memberLeft = gsub(ERR_RAID_MEMBER_REMOVED_S, "%%s", "(.+)"), -- "(.+) has left the raid group"
 	resist = gsub(gsub(ITEM_RESIST_SINGLE, "%%c%%d", "+(%%d+)"), "%%s", ".+"), -- "+(%d+) .+ Resistance"
 	classes = gsub(ITEM_CLASSES_ALLOWED, "%%s", "(.*)"), -- "Classes: (.*)"
+	minLevel = gsub(ITEM_MIN_LEVEL, "%%d", "(.*)"), -- "Requires Level (.*)"
 }
 
 local CurrentTab = "DATABASE"
@@ -519,31 +548,6 @@ local function arrcontains(array, value)
 	return nil
 end
 
-SmokeyItem = {}
-SmokeyLoot.Item = SmokeyItem
-
-function SmokeyItem:Reset()
-	self.id = nil
-	self.link = nil
-	self.slot = nil
-	self.winner = nil
-	self.winType = nil
-	self.winRoll = 0
-	self.tmogWinner = nil
-	self.tmogWinRoll = 0
-	self.tmogIgnored = nil
-	self.lowestPlus = 420
-	self.lowestHR = 420
-	self.lootSource = nil
-	-- arraywipe(Rerolls)
-	-- arraywipe(RerollsTmog)
-	-- rerollsMessage = 0
-	-- tmogRerollsMessage = 0
-	debugprint("SmokeyItem:Reset()")
-end
-
-SmokeyItem:Reset()
-
 local ScanTooltip = CreateFrame("GameTooltip", "SmokeyLootScanTooltip", nil, "GameTooltipTemplate")
 ScanTooltip:SetOwner(WorldFrame, "ANCHOR_NONE")
 
@@ -566,49 +570,36 @@ end
 
 function CanRollTransmog(itemID, unit)
 	itemID = tonumber(itemID)
+	if not itemID then return false end
 
-	if not itemID then
-		return nil
-	end
+	if not unit then unit = "player" end
 
 	local itemName, itemLink, itemQuality, itemLevel, itemType, itemSubType, itemCount, itemEquipLoc, itemTexture = GetItemInfo(itemID)
-	
+
 	-- not equippable
-	if not itemEquipLoc or not TransmogInvTypes[itemEquipLoc] then
-		return false
-	end
+	if not itemEquipLoc or not TransmogInvTypes[itemEquipLoc] then return false end
 
 	-- check collection status if Tmog installed
-	if TMOG_CACHE and (not unit or unit == "player") then
+	if TMOG_CACHE and unit == "player" then
 		for slot, collected in pairs(TMOG_CACHE) do
-			if collected[itemID] then
-				return false
-			end
+			if collected[itemID] then return false end
 		end
 	end
 
 	-- every class can equip off hand frills
-	if itemEquipLoc == "INVTYPE_HOLDABLE" then
-		return true
-	end
+	if itemEquipLoc == "INVTYPE_HOLDABLE" then return true end
 
-	local class, enClass = UnitClass(unit or "player")
+	local class, enClass = UnitClass(unit)
 
 	-- check itemSubTypes for our class
-	if not SubTypesForClass[enClass][itemSubType] then
-		return false
-	end
+	if not SubTypesForClass[enClass][itemSubType] then return false end
 
 	-- some bullshit combination
-	if itemType == L["Weapon"] and itemSubType == L["Miscellaneous"] then
-		return false
-	end
+	if itemType == L["Weapon"] and itemSubType == L["Miscellaneous"] then return false end
 
 	-- check if it is off-hand weapon
 	local canDualWeild = enClass == "WARRIOR" or enClass == "ROGUE" or enClass == "HUNTER"
-	if not canDualWeild and itemEquipLoc == "INVTYPE_WEAPONOFFHAND" then
-		return false
-	end
+	if not canDualWeild and itemEquipLoc == "INVTYPE_WEAPONOFFHAND" then return false end
 
 	-- check if its class restricted
 	ScanTooltip:SetOwner(WorldFrame, "ANCHOR_NONE")
@@ -623,9 +614,7 @@ function CanRollTransmog(itemID, unit)
 			local text = textLeft:GetText()
 			local _, _, classesAllowed = strfind(text or "", (gsub(ITEM_CLASSES_ALLOWED, "%%s", "(.*)")))
 			if classesAllowed then
-				if not strfind(classesAllowed, class, 1, true) then
-					return false
-				end
+				if not strfind(classesAllowed, class, 1, true) then return false end
 			end
 		end
 	end
@@ -641,13 +630,15 @@ function CanRollMS(itemID, unit)
 	-- Fashion Coin
 	if itemID == 51217 then return false end
 
+	if not unit then unit = "player" end
+
 	local itemName, itemLink, itemQuality, itemLevel, itemType, itemSubType, itemCount, itemEquipLoc, itemTexture = GetItemInfo(itemID)
 	
 	if itemType == L["Recipe"] or itemType == L["Container"] or itemType == L["Trade Goods"] then
 		return false
 	end
 
-	local class, enClass = UnitClass(unit or "player")
+	local class, enClass = UnitClass(unit)
 	
 	if (itemType == L["Armor"] or itemType == L["Weapon"]) and itemEquipLoc ~= "" then
 		if not SubTypesForClass[enClass][itemSubType] then return false end
@@ -665,7 +656,6 @@ function CanRollMS(itemID, unit)
 	ScanTooltip:SetHyperlink("item:"..itemID)
 	local numLines = ScanTooltip:NumLines()
 	numLines = (numLines < 15) and numLines or 15
-	local numLinesWithResist = 0
 	for i = 2, numLines do
 		local textLeft = _G[tooltipName.."TextLeft"..i]
 		local textRight = _G[tooltipName.."TextRight"..i]
@@ -673,27 +663,12 @@ function CanRollMS(itemID, unit)
 		local rR, gR, bR = textRight:GetTextColor()
 		local text = textLeft:GetText() or ""
 		local _, _, classesAllowed = strfind(text, Patterns.classes)
+		local minLevel = strfind(text, Patterns.minLevel)
 		if classesAllowed then
-			if not strfind(classesAllowed, class, 1, true) then
-				return false
-			end
+			if not strfind(classesAllowed, class, 1, true) then return false end
 		end
-		if strfind(text, L["Adds a mount"]) or strfind(text, L["Adds a companion"]) then
-			return false
-		end
-		if (not unit or unit == "player") and (IsRed(rL, gL, bL) or IsRed(rR, gR, bR)) then
-			return false
-		end
-		-- local _, _, resistAmount = strfind(text, Patterns.resist)
-		-- if resistAmount then
-		-- 	numLinesWithResist = numLinesWithResist + 1
-		-- 	if tonumber(resistAmount) > 15 then
-		-- 		return false
-		-- 	end
-		-- end
-		-- if numLinesWithResist > 3 then
-		-- 	return false
-		-- end
+		if strfind(text, L["Adds a mount"]) or strfind(text, L["Adds a companion"]) then return false end
+		if unit == "player" and (IsRed(rL, gL, bL) or IsRed(rR, gR, bR)) and not minLevel then return false end
 	end
 
 	return true
@@ -781,6 +756,8 @@ function SmokeyLoot.OnLoad()
 	this:RegisterEvent("GUILD_ROSTER_UPDATE")
 	this:RegisterEvent("CHAT_MSG_ADDON")
 	this:RegisterEvent("CHAT_MSG_SYSTEM")
+	this:RegisterEvent("CHAT_MSG_LOOT")
+	this:RegisterEvent("UI_ERROR_MESSAGE")
 	this:RegisterEvent("PARTY_MEMBERS_CHANGED")
 	this:RegisterEvent("PARTY_LEADER_CHANGED")
 	this:RegisterEvent("PARTY_LOOT_METHOD_CHANGED")
@@ -815,18 +792,14 @@ end
 local lookup = {}
 function SmokeyLoot.OnEvent(event, arg1, arg2, arg3, arg4)
 	if event == "ADDON_LOADED" and arg1 == "SmokeyLoot" then
+		debugprint(event)
 		this:UnregisterEvent("ADDON_LOADED")
-		GuildRoster()
 
-		SMOKEYLOOT = SMOKEYLOOT or {}
-		-- database
-		SMOKEYLOOT.DATABASE = SMOKEYLOOT.DATABASE or { date = 0 }
-		-- hr info
-		SMOKEYLOOT.HR = SMOKEYLOOT.HR or {}
-		-- guild info
-		SMOKEYLOOT.GUILD = SMOKEYLOOT.GUILD or {}
-		-- current raid data
-		SMOKEYLOOT.RAID = SMOKEYLOOT.RAID or {}
+		if not SMOKEYLOOT then SMOKEYLOOT = {} end
+		if not SMOKEYLOOT.DATABASE then SMOKEYLOOT.DATABASE = { date = 0 } end
+		if not SMOKEYLOOT.HR then SMOKEYLOOT.HR = {} end
+		if not SMOKEYLOOT.GUILD then SMOKEYLOOT.GUILD = {} end
+		if not SMOKEYLOOT.RAID then SMOKEYLOOT.RAID = {} end
 
 		SmokeyLootMinimapButton:ClearAllPoints()
 		SmokeyLootMinimapButton:SetPoint("CENTER", UIParent, "BOTTOMLEFT", unpack(SMOKEYLOOT.POSITION or {SmokeyLootMinimapButton:GetCenter()}))
@@ -837,9 +810,12 @@ function SmokeyLoot.OnEvent(event, arg1, arg2, arg3, arg4)
 		for _, data in ipairs(SMOKEYLOOT.DATABASE) do
 			CacheItem(data.itemID)
 		end
+		GuildRoster()
 
 	elseif event == "GUILD_ROSTER_UPDATE" then
 		debugprint(event)
+		if not SMOKEYLOOT then SMOKEYLOOT = {} end
+		if not SMOKEYLOOT.GUILD then SMOKEYLOOT.GUILD = {} end
 
 		listwipe(lookup)
 		for i = 1, GetNumGuildMembers(true) do
@@ -883,6 +859,7 @@ function SmokeyLoot.OnEvent(event, arg1, arg2, arg3, arg4)
 		debugprint(event, "master:", Master, "isMLmethod:", isMLmethod)
 		
 	elseif event == "CHAT_MSG_SYSTEM" then
+		local isMaster = IsMasterLooter()
 		local _, _, m = strfind(arg1, Patterns.newMaster)
 
 		if m then
@@ -895,9 +872,7 @@ function SmokeyLoot.OnEvent(event, arg1, arg2, arg3, arg4)
 		local _, _, joined = strfind(arg1, Patterns.memberJoined)
 		-- local _, _, left = strfind(arg1, Patterns.memberLeft)
 		if joined then
-			if not IsMasterLooter() then
-				return
-			end
+			if not isMaster then return end
 
 			for k, v in ipairs(SMOKEYLOOT.RAID) do
 				if v.char == joined then
@@ -934,16 +909,23 @@ function SmokeyLoot.OnEvent(event, arg1, arg2, arg3, arg4)
 		end
 
 		-- Reading rolls from chat
-		if not SmokeyItem.id then
-			return
-		end
+		if not SmokeyItem.id then return end
 
 		local _, _, player, roll, max = strfind(arg1, Patterns.rollResult)
 		roll, max = tonumber(roll), tonumber(max)
-
 		debugprint(event, "player:", player, "roll:", roll, "max:", max, "AlreadyRolled:", AlreadyRolled[player])
 
+		if isMaster and AlreadyRolled[player] then
+			slmsg(format("%s already rolled on %s.", player, SmokeyItem.link))
+		end
+
 		if player and roll and max and not AlreadyRolled[player] then
+			if not strfind(SmokeyItem.candidates, player, 1, true) then
+				if isMaster then
+					slmsg(format("%s is not a candidate for %s.", player, SmokeyItem.link))
+				end
+				return
+			end
 			local index
 			for k, v in ipairs(SMOKEYLOOT.RAID) do
 				if v.char == player then
@@ -982,7 +964,7 @@ function SmokeyLoot.OnEvent(event, arg1, arg2, arg3, arg4)
 						index = k
 					end
 				end
-				if IsMasterLooter() then
+				if isMaster then
 					slmsg(format("%s was not in the raid list, fill their SR info ASAP!", player))
 				end
 				if SmokeyLootFrame:IsShown() then
@@ -1012,13 +994,19 @@ function SmokeyLoot.OnEvent(event, arg1, arg2, arg3, arg4)
 					if max == SmokeyItem.lowestHR then
 						Rolls.HR[player] = roll
 					end
-				elseif IsMasterLooter() then
-					slmsg(player.." is not allowed to roll HR on this item.")
+				elseif isMaster then
+					slmsg(format("%s is not allowed to roll HR on %s.", player, SmokeyItem.link))
 				end
 
 			elseif max == 100 then
 				-- this is SR roll
-				local isAllowed
+				-- if not strfind(SmokeyItem.candidatesSR, player, 1, true) then
+				-- 	if isMaster then
+				-- 		slmsg(format("%s is not a candidate for %s.", player, SmokeyItem.link))
+				-- 	end
+				-- 	return
+				-- end
+				local isAllowed = false
 				for k, v in ipairs(SMOKEYLOOT.RAID) do
 					if v.itemID == SmokeyItem.id and v.char == player then
 						Rolls.SR[player] = roll + (v.bonus ~= -1 and v.bonus or 0)
@@ -1027,8 +1015,8 @@ function SmokeyLoot.OnEvent(event, arg1, arg2, arg3, arg4)
 					end
 				end
 
-				if not isAllowed and IsMasterLooter() then
-					slmsg(player.." is not allowed to roll SR on this item.")
+				if not isAllowed and isMaster then
+					slmsg(format("%s is not allowed to roll SR on %s.", player, SmokeyItem.link))
 				end
 
 			elseif max == 99 then
@@ -1056,8 +1044,8 @@ function SmokeyLoot.OnEvent(event, arg1, arg2, arg3, arg4)
 							end
 						end
 					end
-				elseif IsMasterLooter() then
-					slmsg(player.." is not allowed to roll MS on this item.")
+				elseif isMaster then
+					slmsg(format("%s is not allowed to roll MS on %s.", player, SmokeyItem.link))
 				end
 
 			elseif max == 98 then
@@ -1076,8 +1064,8 @@ function SmokeyLoot.OnEvent(event, arg1, arg2, arg3, arg4)
 
 				if isAllowed then
 					Rolls.TMOG[player] = roll
-				elseif IsMasterLooter() then
-					slmsg(player.." is not allowed to roll Transmog on this item.")
+				elseif isMaster then
+					slmsg(format("%s is not allowed to roll Transmog on %s.", player, SmokeyItem.link))
 				end
 			end
 
@@ -1117,15 +1105,14 @@ function SmokeyLoot.OnEvent(event, arg1, arg2, arg3, arg4)
 		end
 
 	elseif event == "LOOT_CLOSED" then
+		if SmokeyItem.id and SmokeyItem.lootSource == CurrentLootSource and CurrentLootSource ~= "chest" and not UnitIsDead(CurrentLootSource) then
+			SmokeyLoot.CancelRoll()
+		end
 		CurrentLootSource = nil
 		SmokeyLootMLFrame:Hide()
 
 	elseif event == "LOOT_SLOT_CLEARED" then
-		if SmokeyItem.link then
-			debugprint(event, "SmokeyItem.link:", SmokeyItem.link)
-		end
-
-		if arg1 == SmokeyItem.slot and SmokeyItem.lootSource == CurrentLootSource then
+		if arg1 == SmokeyItem.slot and SmokeyItem.lootSource == CurrentLootSource and IsMasterLooter() then
 			for i = 1, getn(SMOKEYLOOT.RAID) do
 				if SMOKEYLOOT.RAID[i].char == SmokeyItem.winner then
 					if SmokeyItem.winType == "MS" then
@@ -1144,28 +1131,23 @@ function SmokeyLoot.OnEvent(event, arg1, arg2, arg3, arg4)
 				end
 			end
 
-			if IsMasterLooter() then
-				local channel = IsRaidOfficer() and "RAID_WARNING" or "RAID"
-
-				if SmokeyItem.tmogWinner and SmokeyItem.winner and SmokeyItem.tmogWinner ~= SmokeyItem.winner and not SmokeyItem.tmogIgnored then
-					SendChatMessage(format("|cffffffff|Hplayer:%s|h[%s]|h|r (%d %s) trade %s to |cffffffff|Hplayer:%s|h[%s]|h|r (%d %s)",
-						SmokeyItem.tmogWinner, SmokeyItem.tmogWinner, SmokeyItem.tmogWinRoll, "TMOG", SmokeyItem.link,
-						SmokeyItem.winner, SmokeyItem.winner, SmokeyItem.winRoll, SmokeyItem.winType), channel)
+			local channel = IsRaidOfficer() and "RAID_WARNING" or "RAID"
+			if SmokeyItem.recieved and SmokeyItem.givenTo then
+				if SmokeyItem.givenTo == SmokeyItem.tmogWinner then
+					SendChatMessage(format(fmt.trade, SmokeyItem.tmogWinner, SmokeyItem.tmogWinner, SmokeyItem.tmogWinRoll, "TMOG", SmokeyItem.link, SmokeyItem.winner, SmokeyItem.winner, SmokeyItem.winRoll, SmokeyItem.winType), channel)
 					if SmokeyItem.tmogWinner ~= UnitName("player") then
-						SendChatMessage(format("Please, trade %s to |cffffffff|Hplayer:%s|h[%s]|h|r after collecting transmog appearance. <3",
-							SmokeyItem.link, SmokeyItem.winner, SmokeyItem.winner), "WHISPER", nil, SmokeyItem.tmogWinner)
+						SendChatMessage(format(fmt.tradeWhisper, SmokeyItem.link, SmokeyItem.winner, SmokeyItem.winner), "WHISPER", nil, SmokeyItem.tmogWinner)
 					end
-
-				elseif SmokeyItem.winner then
-					SendChatMessage(format("|cffffffff|Hplayer:%s|h[%s]|h|r wins %s (%d %s)",
-						SmokeyItem.winner, SmokeyItem.winner, SmokeyItem.link, SmokeyItem.winRoll, SmokeyItem.winType), channel)
+				elseif SmokeyItem.givenTo == SmokeyItem.winner then
+					SendChatMessage(format(fmt.win, SmokeyItem.winner, SmokeyItem.winner, SmokeyItem.link, SmokeyItem.winRoll, SmokeyItem.winType), channel)
 				end
 			end
 
 			SmokeyLoot.CancelRoll()
-			SmokeyLoot.UpdateRollers()
 			SmokeyLoot.PushRaid()
 		end
+
+		SmokeyLoot.UpdateRollers()
 
 		if SmokeyLootMLFrame:IsShown() then
 			SmokeyLoot.UpdateMLFrame()
@@ -1173,15 +1155,35 @@ function SmokeyLoot.OnEvent(event, arg1, arg2, arg3, arg4)
 
 		SmokeyLoot.UpdateFrame()
 
+	elseif event == "CHAT_MSG_LOOT" then
+		local givenTo = SmokeyItem.givenTo
+		if givenTo == UnitName("player") then givenTo = YOU end
+		if not SmokeyItem.recieved and givenTo and string.find(arg1, SmokeyItem.link, 1, true) and string.find(arg1, givenTo, 1, true) then
+			SmokeyItem.recieved = true
+		end
+
+	elseif event == "UI_ERROR_MESSAGE" then
+		if SmokeyItem.givenTo then
+			if arg1 == ERR_LOOT_GONE
+				or arg1 == ERR_LOOT_MASTER_INV_FULL
+				or arg1 == ERR_LOOT_MASTER_OTHER
+				or arg1 == ERR_LOOT_MASTER_UNIQUE_ITEM
+				or arg1 == ERR_LOOT_PLAYER_NOT_FOUND
+			then
+				SmokeyItem.givenTo = nil
+				SmokeyItem.recieved = nil
+			end
+		end
+
 	elseif event == "CHAT_MSG_ADDON" and arg1 == "SmokeyLoot" then
 		local message = arg2
 		local channel = arg3
-		local player = arg4
+		local sender = arg4
 
 		if channel == "RAID" then
-			if strfind(message, "^StartRoll") and player == SmokeyLoot.GetLootMasterName() then
+			if strfind(message, "^StartRoll") and sender == SmokeyLoot.GetLootMasterName() then
 				-- starting roll, show popup
-				local _, _, id, name, texture, srBy, candidates = strfind(message, "StartRoll:(%d*);(.*);(.*);(.*);(.*)")
+				local _, _, id, name, texture, candidatesSR, candidates, count, quality, link = strfind(message, "StartRoll:(%d*);(.*);(.*);(.*);(.*);(%d*);(%d*);(.*)")
 
 				if not strfind(candidates or "", UnitName("player")) then
 					return
@@ -1189,10 +1191,17 @@ function SmokeyLoot.OnEvent(event, arg1, arg2, arg3, arg4)
 
 				debugprint(message)
 				SmokeyLootPopupFrameIconFrameIcon:SetTexture(texture)
-				SmokeyLootPopupFrameIconFrame.itemID = tonumber(id)
-				SmokeyItem.id = tonumber(id)
+				SmokeyLootPopupFrameIconFrameCount:SetText(tonumber(count) > 1 and count or "")
+				SmokeyLootPopupFrameIconFrame.itemString = gsub(link, ".*|H(.-)|h.*", "%1", 1)
+				SmokeyLootPopupFrameIconFrame.link = link
+				local r, g, b = GetItemQualityColor(tonumber(quality))
 				SmokeyLootPopupFrameName:SetText(name)
+				SmokeyLootPopupFrameName:SetTextColor(r, g, b)
 				SmokeyLootPopupFrame:Show()
+				SmokeyItem.id = tonumber(id)
+				SmokeyItem.link = link
+				SmokeyItem.candidatesSR = candidatesSR
+				SmokeyItem.candidates = candidates
 				CacheItem(SmokeyItem.id)
 
 				if MyHRItemIDs[SmokeyItem.id] then
@@ -1203,7 +1212,7 @@ function SmokeyLoot.OnEvent(event, arg1, arg2, arg3, arg4)
 					SmokeyLootPopupFrameHR:SetAlpha(0.5)
 				end
 
-				if strfind(srBy or "", UnitName("player"), 1, true) then
+				if strfind(candidatesSR or "", UnitName("player"), 1, true) then
 					SmokeyLootPopupFrameSR:EnableMouse(true)
 					SmokeyLootPopupFrameSR:SetAlpha(1)
 				else
@@ -1213,21 +1222,21 @@ function SmokeyLoot.OnEvent(event, arg1, arg2, arg3, arg4)
 
 				SmokeyLootPopupFrame:SetScript("OnUpdate", LootPopupOnUpdate)
 
-			elseif player ~= UnitName("player") then
-				if strfind(message, "^EndRoll") and player == SmokeyLoot.GetLootMasterName() then
+			elseif sender ~= UnitName("player") then
+				if strfind(message, "^EndRoll") and sender == SmokeyLoot.GetLootMasterName() then
 					-- ending roll, hide popup
 					SmokeyLootPopupFrame:Hide()
-					SmokeyLoot.UpdateRollers()
 					SmokeyItem:Reset()
+					SmokeyLoot.UpdateRollers()
 
 				elseif message == "REPORT_ADDON_VERSION" then
-					debugprint(message, player)
+					debugprint(message, sender)
 					SendAddonMessage("SmokeyLoot", "V_"..GetAddOnMetadata("SmokeyLoot", "Version"), "RAID")
 
 				elseif strfind(message, "^V_") then
 					local v = tonumber(strsub(message, 3))
-					SmokeyAddonVersions[player] = v or 0
-					debugprint(message, player)
+					SmokeyAddonVersions[sender] = v or 0
+					debugprint(message, sender)
 
 				elseif message == "GET_ML" then
 					-- share loot master name
@@ -1235,7 +1244,7 @@ function SmokeyLoot.OnEvent(event, arg1, arg2, arg3, arg4)
 					if name then
 						SendAddonMessage("SmokeyLoot", "ML_"..name, "RAID")
 					end
-					debugprint(message, player)
+					debugprint(message, sender)
 
 				elseif strfind(message, "ML_", 1, true) then
 					local m = strsub(message, 4)
@@ -1245,7 +1254,7 @@ function SmokeyLoot.OnEvent(event, arg1, arg2, arg3, arg4)
 							break
 						end
 					end
-					debugprint(message, player, "master:", Master)
+					debugprint(message, sender, "master:", Master)
 					SmokeyLoot.EnableRaidControls()
 
 				-- raid update
@@ -1259,10 +1268,10 @@ function SmokeyLoot.OnEvent(event, arg1, arg2, arg3, arg4)
 
 				elseif message == "R_end" then
 					SmokeyLoot.UpdateFrame()
-					debugprint(message, player)
+					debugprint(message, sender)
 
 				elseif message == "R_clear" then
-					debugprint(message, player)
+					debugprint(message, sender)
 					arraywipe(SMOKEYLOOT.RAID)
 					SmokeyLoot.UpdateFrame()
 
@@ -1282,33 +1291,33 @@ function SmokeyLoot.OnEvent(event, arg1, arg2, arg3, arg4)
 				end
 			end
 
-		elseif channel == "GUILD" and player ~= UnitName("player") then
+		elseif channel == "GUILD" and sender ~= UnitName("player") then
 			-- sync stuff here
 			if message == "GET_DB_LATEST" and IsOfficer(UnitName("player")) then
-				debugprint("DB requested by", player)
+				debugprint("DB requested by", sender)
 				SendAddonMessage("SmokeyLoot", "VDB_"..SMOKEYLOOT.DATABASE.date, "GUILD")
 				return
 			end
 			if strfind(message, "^VDB_%d+") then
 				local _, _, date = strfind(message, "^VDB_(%d+)")
-				if tonumber(date) > tonumber(SMOKEYLOOT.DATABASE.date) and IsOfficer(player) then
-					SendAddonMessage("SmokeyLoot", "PULL_FROM_"..player, "GUILD")
+				if tonumber(date) > tonumber(SMOKEYLOOT.DATABASE.date) and IsOfficer(sender) then
+					SendAddonMessage("SmokeyLoot", "PULL_FROM_"..sender, "GUILD")
 				end
 				return
 			end
 			if message == "PULL_FROM_"..UnitName("player") and IsOfficer(UnitName("player")) then
-				SmokeyLoot.Push(player)
+				SmokeyLoot.Push(sender)
 				return
 			end
 			if not Pusher and strfind(message, "^start;%d+;%d+") then
-				debugprint(message, player)
+				debugprint(message, sender)
 
 				local _, _, date, max = strfind(message, "start;(%d+);(%d+)")
-				if tonumber(date) > tonumber(SMOKEYLOOT.DATABASE.date) and IsOfficer(player) then
+				if tonumber(date) > tonumber(SMOKEYLOOT.DATABASE.date) and IsOfficer(sender) then
 					arraywipe(SMOKEYLOOT.DATABASE)
 					arraywipe(SMOKEYLOOT.HR)
 					
-					Pusher = player
+					Pusher = sender
 					SMOKEYLOOT.DATABASE.date = tonumber(date)
 
 					SmokeyLootFrameProgressBar:Show()
@@ -1320,9 +1329,9 @@ function SmokeyLoot.OnEvent(event, arg1, arg2, arg3, arg4)
 					slmsg("Updating database, provided by "..Pusher..", please, stay online until its done.")
 				end
 
-			elseif player and player == Pusher then
+			elseif sender and sender == Pusher then
 				if strfind(message, "^end;%d+") then
-					debugprint(message, player)
+					debugprint(message, sender)
 
 					Pusher = nil
 					Pulling = false
@@ -1922,10 +1931,11 @@ function SmokeyLoot.StartOrEndRoll(slot)
 	local link = GetLootSlotLink(slot)
 	local _, _, itemID = strfind(link or "", "item:(%d+)")
 	itemID = tonumber(itemID)
-
 	if not itemID then return end
 
-	if not SmokeyItem.id then
+	local itemTexture, itemName, itemCount, itemQuality = GetLootSlotInfo(slot)
+
+	if not SmokeyItem.id and CurrentLootSource then
 		-- Start Roll
 		SmokeyItem.id = itemID
 		SmokeyItem.slot = slot
@@ -1935,32 +1945,33 @@ function SmokeyLoot.StartOrEndRoll(slot)
 		SmokeyItem.lootSource = CurrentLootSource
 		
 		listwipe(Rolls)
-		-- arraywipe(Rerolls)
-		-- arraywipe(RerollsTmog)
 		arraywipe(SRCandidates)
 		arraywipe(Candidates)
 
-		local itemName, itemLink, itemQuality, itemLevel, itemType, itemSubType, itemCount, itemEquipLoc, itemTexture = GetItemInfo(itemID)
-		local r, g, b, color = GetItemQualityColor(itemQuality)
-		local channel = IsRaidOfficer() and "RAID_WARNING" or "RAID"
-		itemName = color..itemName.."|r"
-		
-		for k, v in ipairs(SMOKEYLOOT.RAID) do
-			if v.itemID == itemID and v.bonus ~= -1 then
-				tinsert(SRCandidates, v.char)
-			end
-		end
-		
+		local numRaidMembers = GetNumRaidMembers()
+		local _, _, _, _, _, _, myZone = GetRaidRosterInfo(numRaidMembers)
 		for i = 1, 40 do
-			for j = 1, GetNumRaidMembers() do
-				if GetRaidRosterInfo(j) == GetMasterLootCandidate(i) then
-					tinsert(Candidates, (GetRaidRosterInfo(j)))
+			local candidate = GetMasterLootCandidate(i)
+			for j = 1, numRaidMembers do
+				local name, rank, subgroup, level, class, fileName, zone, online, isDead = GetRaidRosterInfo(j)
+				if name == candidate and zone == myZone and online then
+					tinsert(Candidates, candidate)
+					for k, v in ipairs(SMOKEYLOOT.RAID) do
+						if v.itemID == itemID and v.bonus ~= -1 and v.char == candidate then
+							tinsert(SRCandidates, candidate)
+							break
+						end
+					end
+					break
 				end
 			end
 		end
 
-		SendChatMessage(format("Starting roll on %s", link), channel)
-		SendAddonMessage("SmokeyLoot", format("StartRoll:%d;%s;%s;%s;%s", itemID, itemName, itemTexture, concat(SRCandidates, ","), concat(Candidates, ",")), "RAID")
+		SmokeyItem.candidatesSR = concat(SRCandidates, ",")
+		SmokeyItem.candidates = concat(Candidates, ",")
+
+		SendChatMessage("Starting roll on "..link, IsRaidOfficer() and "RAID_WARNING" or "RAID")
+		SendAddonMessage("SmokeyLoot", format("StartRoll:%d;%s;%s;%s;%s;%d;%d;%s", itemID, itemName, itemTexture, SmokeyItem.candidatesSR, SmokeyItem.candidates, itemCount, itemQuality, link), "RAID")
 
 	else
 		-- End Roll
@@ -1970,6 +1981,7 @@ function SmokeyLoot.StartOrEndRoll(slot)
 		end
 
 		if itemID == SmokeyItem.id then
+			local winnerFound = false
 			if GetNumRaidMembers() > 0 then
 				local name
 				SmokeyItem.tmogIgnored = SmokeyLootMLFrameIgnoreTmog:GetChecked()
@@ -1981,13 +1993,20 @@ function SmokeyLoot.StartOrEndRoll(slot)
 				for i = 1, 40 do
 					if name == GetMasterLootCandidate(i) then
 						-- if SmokeyItem.lootSource ~= "chest" then
+							SmokeyItem.givenTo = name
+							SmokeyItem.recieved = nil
 							GiveMasterLoot(SmokeyItem.slot, i)
+							winnerFound = true
 						-- else
 						-- 	SmokeyLoot.OnEvent("LOOT_SLOT_CLEARED", SmokeyItem.slot)
 						-- end
 						break
 					end
 				end
+			end
+			if not winnerFound then
+				slmsg("Roll cancelled - winner was not found in candidates list.")
+				SmokeyLoot.CancelRoll()
 			end
 			SmokeyLootPopupFrame:Hide()
 		end
@@ -1998,9 +2017,12 @@ end
 
 function SmokeyLoot.CancelRoll()
 	SmokeyLootPopupFrame:Hide()
-	SendAddonMessage("SmokeyLoot", "EndRoll", "RAID")
+	if IsMasterLooter() then
+		SendAddonMessage("SmokeyLoot", "EndRoll", "RAID")
+	end
 	SmokeyItem:Reset()
 	SmokeyLoot.UpdateMLFrame()
+	SmokeyLoot.UpdateRollers()
 end
 
 function SmokeyLoot.UpdateMLFrame()
@@ -2045,7 +2067,11 @@ function SmokeyLoot.UpdateMLFrame()
 				button.lootSlot = i
 				winnerText:SetText("...")
 
-				if arrcontains(SMOKEYLOOT.RAID, id) then
+				local showSRText = false
+				for k, v in ipairs(SMOKEYLOOT.RAID) do
+					if v.itemID == id and v.enabled then showSRText = true break end
+				end
+				if showSRText then
 					srText:Show()
 				else
 					srText:Hide()
@@ -2055,10 +2081,11 @@ function SmokeyLoot.UpdateMLFrame()
 					if SmokeyItem.id == id and SmokeyItem.lootSource == CurrentLootSource then
 						SmokeyItem.slot = i
 						if SmokeyItem.winner then
-							winnerText:SetText(SmokeyItem.winner.." ("..SmokeyItem.winType..")")
+							local text = SmokeyItem.winner.." ("..SmokeyItem.winType..")"
 							if SmokeyItem.tmogWinner and not SmokeyLootMLFrameIgnoreTmog:GetChecked() then
-								winnerText:SetText(SmokeyItem.tmogWinner.." (TMOG)->"..winnerText:GetText())
+								text = SmokeyItem.tmogWinner.." (TMOG)->"..text
 							end
+							winnerText:SetText(text)
 						end
 						toggleButton:SetText("End Roll")
 						toggleButton:Enable()

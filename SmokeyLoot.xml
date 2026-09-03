@@ -697,6 +697,11 @@
 								<Anchor point="CENTER"/>
 							</Anchors>
 						</Texture>
+						<FontString name="$parentCount" inherits="NumberFontNormal" justifyH="RIGHT">
+							<Anchors>
+								<Anchor point="BOTTOMRIGHT"><Offset x="-5" y="2"></Offset></Anchor>
+							</Anchors>
+						</FontString>
 					</Layer>
 				</Layers>
 				<Scripts>
@@ -704,8 +709,10 @@
 						this.hasItem = 1;
 					</OnLoad>
 					<OnEnter>
-						GameTooltip:SetOwner(this, "ANCHOR_RIGHT");
-						GameTooltip:SetHyperlink("item:"..this.itemID)
+						if this.itemString then
+							GameTooltip:SetOwner(this, "ANCHOR_RIGHT")
+							GameTooltip:SetHyperlink(this.itemString)
+						end
 						CursorUpdate()
 					</OnEnter>
 					<OnLeave>
@@ -716,11 +723,12 @@
 						CursorOnUpdate()
 					</OnUpdate>
 					<OnClick>
+						if not this.link then return end
 						if IsControlKeyDown() then
-							DressUpItemLink("item:"..this.itemID)
+							DressUpItemLink(this.link)
 						elseif IsShiftKeyDown() then
 							if ChatFrameEditBox:IsVisible() then
-								ChatFrameEditBox:Insert("item:"..this.itemID)
+								ChatFrameEditBox:Insert(this.link)
 							end
 						end
 					</OnClick>
