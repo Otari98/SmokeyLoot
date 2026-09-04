@@ -691,9 +691,9 @@ function IsBongoAlt(name)
 end
 
 function IsOfficer(name)
-	if name == UnitName("player") then
+	if not name or name == UnitName("player") then
 		local _, myRank = GetGuildInfo("player")
-		return OfficerRanks[myRank]
+		return IsInGuild() and OfficerRanks[myRank] ~= nil
 	else
 		if SMOKEYLOOT.GUILD[name] and SMOKEYLOOT.GUILD[name].rankName then
 			return OfficerRanks[SMOKEYLOOT.GUILD[name].rankName]
@@ -1307,7 +1307,7 @@ function SmokeyLoot.OnEvent(event, arg1, arg2, arg3, arg4)
 
 		elseif channel == "GUILD" and sender ~= UnitName("player") then
 			-- sync stuff here
-			if message == "GET_DB_LATEST" and IsOfficer(UnitName("player")) then
+			if message == "GET_DB_LATEST" and IsOfficer() then
 				debugprint("DB requested by", sender)
 				SendAddonMessage("SmokeyLoot", "VDB_"..SMOKEYLOOT.DATABASE.date, "GUILD")
 				return
@@ -1319,7 +1319,7 @@ function SmokeyLoot.OnEvent(event, arg1, arg2, arg3, arg4)
 				end
 				return
 			end
-			if message == "PULL_FROM_"..UnitName("player") and IsOfficer(UnitName("player")) then
+			if message == "PULL_FROM_"..UnitName("player") and IsOfficer() then
 				SmokeyLoot.Push(sender)
 				return
 			end
@@ -2228,7 +2228,7 @@ function SmokeyLoot.SwitchTab(switchTo)
 		SmokeyLootClearButton:Hide()
 		SmokeyLootAddButton:Show()
 
-		if IsOfficer(UnitName("player")) and getn(SMOKEYLOOT.RAID) == 0 then
+		if IsOfficer() and getn(SMOKEYLOOT.RAID) == 0 then
 			SmokeyLootAddButton:Enable()
 		else
 			SmokeyLootAddButton:Disable()
@@ -2402,7 +2402,7 @@ function SmokeyLoot.Pull()
 end
 
 function SmokeyLoot.Push(player)
-	if not IsOfficer(UnitName("player")) or Pushing or Pusher or SMOKEYLOOT.DATABASE.date < SmokeyLoot.GetRemoteVersion() then
+	if not IsOfficer() or Pushing or Pusher or SMOKEYLOOT.DATABASE.date < SmokeyLoot.GetRemoteVersion() then
 		return
 	end
 
@@ -2497,7 +2497,7 @@ function SmokeyLoot.PushRaid(clear)
 end
 
 function SmokeyLoot.CheckDBSanity()
-	if not IsOfficer(UnitName("player")) then
+	if not IsOfficer() then
 		return
 	end
 
@@ -2540,7 +2540,7 @@ function SmokeyLoot.GetRemoteVersion()
 end
 
 function SmokeyLoot.SetRemoteVersion()
-	if not IsOfficer(UnitName("player")) then
+	if not IsOfficer() then
 		return
 	end
 
@@ -2604,8 +2604,11 @@ function SmokeyLoot.ToggleEditEntryFrame(id, add)
 		return
 	end
 
+	local isOfficer = IsOfficer()
+	local isMaster = IsMasterLooter()
+
 	if SMOKEYLOOT.DATABASE.date < SmokeyLoot.GetRemoteVersion() then
-		slmsg("You need to get latest database first.")
+		if isOfficer or isMaster then slmsg("You need to get latest database first.") end
 		return
 	end
 	
@@ -2615,7 +2618,7 @@ function SmokeyLoot.ToggleEditEntryFrame(id, add)
 	SmokeyLootEditEntryFrame.tab = CurrentTab
 
 	if CurrentTab == "DATABASE" then
-		if not IsOfficer(UnitName("player")) then
+		if not isOfficer then
 			SmokeyLootEditEntryFrame:Hide()
 			return
 		end
@@ -2631,7 +2634,7 @@ function SmokeyLoot.ToggleEditEntryFrame(id, add)
 		SmokeyLootEditEntryFrameHint:SetText("Shift-click entries or chat links to copy paste values")
 
 	elseif CurrentTab == "RAID" then
-		if not IsMasterLooter() then
+		if not isMaster then
 			SmokeyLootEditEntryFrame:Hide()
 			return
 		end
@@ -2672,8 +2675,10 @@ function SmokeyLoot.EditEntryFrame_OnHide()
 end
 
 function SmokeyLoot.EditEntryFrameAcceptButton_OnClick()
+	local isOfficer = IsOfficer()
+	local isMaster = IsMasterLooter()
 	if SMOKEYLOOT.DATABASE.date < SmokeyLoot.GetRemoteVersion() then
-		slmsg("You need to get latest database first.")
+		if isOfficer or isMaster then slmsg("You need to get latest database first.") end
 		return
 	end
 	local tab = SmokeyLootEditEntryFrame.tab
@@ -2685,7 +2690,7 @@ function SmokeyLoot.EditEntryFrameAcceptButton_OnClick()
 	local newEnabled = SmokeyLootEditEntryFrameEnabledCheckBox:GetChecked() and true or false
 	
 	if tab == "DATABASE" then
-		if not IsOfficer(UnitName("player")) then
+		if not isOfficer then
 			SmokeyLootEditEntryFrame:Hide()
 			return
 		end
@@ -2710,7 +2715,7 @@ function SmokeyLoot.EditEntryFrameAcceptButton_OnClick()
 		SmokeyLoot.UpdateHR()
 
 	elseif tab == "RAID" then
-		if not IsMasterLooter() then
+		if not isMaster then
 			SmokeyLootEditEntryFrame:Hide()
 			return
 		end
@@ -2755,7 +2760,7 @@ function SmokeyLoot.EditEntryFrameAcceptButton_OnClick()
 end
 
 function SmokeyLoot.EditEntryFrameDeleteButton_OnClick()
-	if CurrentTab == "DATABASE" and IsOfficer(UnitName("player")) then
+	if CurrentTab == "DATABASE" and IsOfficer() then
 		if SMOKEYLOOT.DATABASE.date < SmokeyLoot.GetRemoteVersion() then
 			slmsg("You need to get latest database first.")
 			return
@@ -2802,7 +2807,7 @@ function SmokeyLoot.AddButton_OnClick()
 end
 
 function SmokeyLoot.AddButton_OnShow()
-	if (CurrentTab == "DATABASE" and not IsOfficer(UnitName("player"))) or (CurrentTab == "RAID" and not IsMasterLooter()) then
+	if (CurrentTab == "DATABASE" and not IsOfficer()) or (CurrentTab == "RAID" and not IsMasterLooter()) then
 		SmokeyLootAddButton:Disable()
 		return
 	end
