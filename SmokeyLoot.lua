@@ -181,53 +181,54 @@ local TargetChangeRegistered = false
 
 local LootButtonsMax = 6
 local MaxEntries = 32
--- rerollsMessage = 0
--- tmogRerollsMessage = 0
 
 local SearchResult = {}
 local AlreadyRolled = {}
 local MyHRItemIDs = {}
 
-local OfficerRanks = {}
-OfficerRanks["Dank Sparrow"] = 0
-OfficerRanks["Lieutenant Kush"] = 1
-OfficerRanks["Hemp Corsair"] = 2
+local OfficerRanks = {
+	["Dank Sparrow"] = 0,
+	["Lieutenant Kush"] = 1,
+	["Hemp Corsair"] = 2,
+}
 
 local BongRank = 3
 
-local AltRanks = {}
-AltRanks["Swab Toker"] = 7
-AltRanks["Hemp Corsair"] = OfficerRanks["Hemp Corsair"]
+local AltRanks = {
+	["Swab Toker"] = 7,
+	["Hemp Corsair"] = OfficerRanks["Hemp Corsair"],
+}
 
 local ClassColors = {}
 for class, color in pairs(RAID_CLASS_COLORS) do
 	ClassColors[class] = format("|cff%02x%02x%02x", color.r * 255, color.g * 255, color.b * 255)
 end
 
-local BlacklistItems = {}
-BlacklistItems[20739] = true -- Mechanical Horse
-BlacklistItems[36550] = true -- Spotted Qiraji Battle Tank
-BlacklistItems[36551] = true -- Black Drake
-BlacklistItems[92080] = true -- Molten Corehound
-BlacklistItems[36666] = true -- Plagued Riding Spider
-BlacklistItems[19902] = true -- Swift Zulian Tiger
-BlacklistItems[19872] = true -- Armored Razzashi Raptor
-BlacklistItems[92082] = true -- Felforged Dreadhound
-BlacklistItems[30018] = true -- Emerald Drake
-BlacklistItems[30017] = true -- Onyxian Drake
+local BlacklistItems = {
+	[20739] = true, -- Mechanical Horse
+	[36550] = true, -- Spotted Qiraji Battle Tank
+	[36551] = true, -- Black Drake
+	[92080] = true, -- Molten Corehound
+	[36666] = true, -- Plagued Riding Spider
+	[19902] = true, -- Swift Zulian Tiger
+	[19872] = true, -- Armored Razzashi Raptor
+	[92082] = true, -- Felforged Dreadhound
+	[30018] = true, -- Emerald Drake
+	[30017] = true, -- Onyxian Drake
+	[17966] = true, -- Onyxia Hide Backpack
+}
 
-local RankPrioItems = {}
-RankPrioItems[61184] = true -- The Scythe of Elune
+local RankPrioItems = {
+	[61184] = true, -- The Scythe of Elune
+}
 
-local Rolls = {}
-Rolls.HR = {}
-Rolls.SR = {}
-Rolls.MS = {}
-Rolls.OS = {}
-Rolls.TMOG = {}
-
--- local Rerolls = {}
--- local RerollsTmog = {}
+local Rolls = {
+	HR = {},
+	SR = {},
+	MS = {},
+	OS = {},
+	TMOG = {},
+}
 
 local SmokeyAddonVersions = {}
 
@@ -864,6 +865,7 @@ function SmokeyLoot.OnEvent(event, arg1, arg2, arg3, arg4)
 	elseif event == "RAID_ROSTER_UPDATE" then
 		debugprint(event)
 		SmokeyLoot.UpdateRollers()
+		SmokeyLoot.EnableRaidControls()
 		SmokeyLoot.RegisterTargetChange()
 		
 	elseif event == "PLAYER_ENTERING_WORLD" then
@@ -1664,21 +1666,14 @@ function SmokeyLoot.Entry_OnClick()
 			return
 		end
 		-- copy paste values
-		-- local editBoxID = SmokeyLootEditEntryFrame.editBoxInFocus
-		-- if editBoxID == 1 or editBoxID == 2 then
-			if this.data.item then
-				SmokeyLootEditEntryFrameEditBox1:SetText(this.data.item)
-			end
-			if this.data.itemID then
-				SmokeyLootEditEntryFrameEditBox2:SetNumber(this.data.itemID)
-			end
-		-- end
-		-- if this.data.char and editBoxID == 3 then
-			SmokeyLootEditEntryFrameEditBox3:SetText(this.data.char)
-		-- end
-		-- if this.data.bonus and editBoxID == 4 then
-			SmokeyLootEditEntryFrameEditBox4:SetText(this.data.bonus)
-		-- end
+		if this.data.item then
+			SmokeyLootEditEntryFrameEditBox1:SetText(this.data.item)
+		end
+		if this.data.itemID then
+			SmokeyLootEditEntryFrameEditBox2:SetNumber(this.data.itemID)
+		end
+		SmokeyLootEditEntryFrameEditBox3:SetText(this.data.char)
+		SmokeyLootEditEntryFrameEditBox4:SetText(this.data.bonus)
 	elseif CurrentTab == "DATABASE" or CurrentTab == "RAID" then
 		SmokeyLoot.ToggleEditEntryFrame(this:GetID())
 	end
@@ -1711,12 +1706,9 @@ ChatFrame_OnHyperlinkShow = function(link, text, button)
 		text = gsub(text, "|r", "")
 		_, _, itemName = strfind(text, "%[(.-)%]")
 	end
-	-- local editBoxID = SmokeyLootEditEntryFrame.editBoxInFocus
 	if itemName and itemID then
-		-- if editBoxID == 1 or editBoxID == 2 then
-			SmokeyLootEditEntryFrameEditBox1:SetText(strtrim(itemName))
-			SmokeyLootEditEntryFrameEditBox2:SetNumber(itemID)
-		-- end
+		SmokeyLootEditEntryFrameEditBox1:SetText(strtrim(itemName))
+		SmokeyLootEditEntryFrameEditBox2:SetNumber(itemID)
 	elseif name and strlen(name) > 0 then
 		SmokeyLootEditEntryFrameEditBox3:SetText(name)
 		local id = SmokeyLootEditEntryFrameEditBox2:GetNumber()
@@ -1846,7 +1838,6 @@ function SmokeyLoot.GetWinner()
 				SmokeyItem.winRoll = v
 				SmokeyItem.winner = k
 				SmokeyItem.winType = "HR"
-				-- arraywipe(Rerolls)
 			end
 		end
 	elseif next(Rolls.SR) then
@@ -1855,7 +1846,6 @@ function SmokeyLoot.GetWinner()
 				SmokeyItem.winRoll = v
 				SmokeyItem.winner = k
 				SmokeyItem.winType = "SR"
-				-- arraywipe(Rerolls)
 			end
 		end
 	elseif next(Rolls.MS) then
@@ -1866,7 +1856,6 @@ function SmokeyLoot.GetWinner()
 				SmokeyItem.winRoll = v
 				SmokeyItem.winner = k
 				SmokeyItem.winType = "MS"
-				-- arraywipe(Rerolls)
 			end
 		end
 	elseif next(Rolls.OS) then
@@ -1877,7 +1866,6 @@ function SmokeyLoot.GetWinner()
 				SmokeyItem.winRoll = v
 				SmokeyItem.winner = k
 				SmokeyItem.winType = "OS"
-				-- arraywipe(Rerolls)
 			end
 		end
 	elseif next(Rolls.TMOG) then
@@ -1887,7 +1875,6 @@ function SmokeyLoot.GetWinner()
 				SmokeyItem.winRoll = v
 				SmokeyItem.winner = k
 				SmokeyItem.winType = "TMOG"
-				-- arraywipe(Rerolls)
 			end
 		end
 	end
@@ -1897,42 +1884,9 @@ function SmokeyLoot.GetWinner()
 			if v > SmokeyItem.tmogWinRoll and k ~= SmokeyItem.winner then
 				SmokeyItem.tmogWinRoll = v
 				SmokeyItem.tmogWinner = k
-				-- arraywipe(RerollsTmog)
 			end
 		end
 	end
-	-- if not IsMasterLooter() then
-	-- 	return
-	-- end
-	-- -- check if someone else had the same roll
-	-- if SmokeyItem.winner then
-	-- 	for k, v in pairs(Rolls[SmokeyItem.winType]) do
-	-- 		if v ~= SmokeyItem.winRoll then
-	-- 			debug("Rerolls", k, v)
-	-- 			tinsert(Rerolls, k)
-	-- 		end
-	-- 	end
-	-- 	if getn(Rerolls) > 1 and getn(Rerolls) > rerollsMessage then
-	-- 		SmokeyItem.winner = Rerolls[random(1, getn(Rerolls))]
-	-- 		slmsg(format("Auto rerolling for %s . . .", concat(Rerolls, ", ")))
-	-- 		slmsg(format("Winner: %s (%s)", SmokeyItem.winner, SmokeyItem.winType))
-	-- 		rerollsMessage = getn(Rerolls)
-	-- 	end
-	-- end
-	-- if SmokeyItem.tmogWinner then
-	-- 	for k, v in pairs(Rolls.TMOG) do
-	-- 		if v == SmokeyItem.tmogWinRoll and k ~= SmokeyItem.winner then
-	-- 			debug("RerollsTmog",k,v)
-	-- 			tinsert(RerollsTmog, k)
-	-- 		end
-	-- 	end
-	-- 	if getn(RerollsTmog) > 1 and getn(RerollsTmog) > tmogRerollsMessage then
-	-- 		SmokeyItem.tmogWinner = RerollsTmog[random(1, getn(RerollsTmog))]
-	-- 		slmsg(format("Auto rerolling for %s . . .", concat(RerollsTmog, ", ")))
-	-- 		slmsg(format("Transmog winner: %s", SmokeyItem.tmogWinner))
-	-- 		tmogRerollsMessage = getn(RerollsTmog)
-	-- 	end
-	-- end
 	debugprint("winner:", SmokeyItem.winner, "tmogWinner:", SmokeyItem.tmogWinner)
 end
 
@@ -1983,7 +1937,9 @@ function SmokeyLoot.StartOrEndRoll(slot)
 
 		SmokeyItem.candidatesSR = concat(SRCandidates, ",")
 		SmokeyItem.candidates = concat(Candidates, ",")
-
+		if table.getn(SRCandidates) > 0 then
+			link = link.." (SR by "..SmokeyItem.candidatesSR..")"
+		end
 		SendChatMessage("Starting roll on "..link, IsRaidOfficer() and "RAID_WARNING" or "RAID")
 		SendAddonMessage("SmokeyLoot", format("StartRoll:%d;%s;%s;%s;%s;%d;%d;%s", itemID, itemName, itemTexture, SmokeyItem.candidatesSR, SmokeyItem.candidates, itemCount, itemQuality, link), "RAID")
 		LootSourceFrame:Show()
@@ -2370,7 +2326,7 @@ function SmokeyLoot.FinishRaidButton_OnClick()
 	PushAfter = true
 
 	Delay(1, function()
-		if SmokeyLoot.GetRemoteVersion() <= SMOKEYLOOT.DATABASE.date then
+		if SmokeyLoot.GetRemoteVersion() <= SMOKEYLOOT.DATABASE.date and IsMasterLooter() then
 			PushAfter = false
 			SmokeyLoot.FinishRaidRoutine()
 			SmokeyLoot.Push()
@@ -2401,7 +2357,7 @@ function SmokeyLoot.Pull()
 	end)
 end
 
-function SmokeyLoot.Push(player)
+function SmokeyLoot.Push(requestedBy)
 	if not IsOfficer() or Pushing or Pusher or SMOKEYLOOT.DATABASE.date < SmokeyLoot.GetRemoteVersion() then
 		return
 	end
@@ -2428,8 +2384,8 @@ function SmokeyLoot.Push(player)
 	Pushing = true
 
 	debugprint("Pushing database")
-	if player then
-		slmsg("Sharing database, requested by "..player..", please, stay online until it's done.")
+	if requestedBy then
+		slmsg("Sharing database, requested by "..requestedBy..", please, stay online until it's done.")
 	end
 
 	dbPushFrame:SetScript("OnUpdate", function()
@@ -2918,11 +2874,11 @@ SlashCmdList.SMOKEYLOOT = function(cmd)
 			for k, v in pairs(SmokeyAddonVersions) do
 				if k ~= UnitName("player") then
 					if v > myVersion then
-						higher = higher..k..", "
+						higher = higher..k.."("..v.."), "
 					elseif v == myVersion then
 						same = same..k..", "
 					elseif v < myVersion and v ~= -1 then
-						outdated = outdated..k..", "
+						outdated = outdated..k.."("..v.."), "
 					elseif v == -1 then
 						noAddon = noAddon..k..", "
 					end
