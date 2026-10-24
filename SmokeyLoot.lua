@@ -25,7 +25,7 @@ function SmokeyItem:Reset()
 	self.lowestPlus = 420
 	self.lowestHR = 420
 	self.lootSource = nil
-	self.recieved = nil
+	-- self.recieved = nil
 	self.givenTo = nil
 	self.candidates = ""
 	self.candidatesSR = ""
@@ -613,10 +613,8 @@ function CanRollTransmog(itemID, unit)
 		local textLeft = _G[ScanTooltip:GetName().."TextLeft"..i]
 		if textLeft then
 			local text = textLeft:GetText()
-			local _, _, classesAllowed = strfind(text or "", (gsub(ITEM_CLASSES_ALLOWED, "%%s", "(.*)")))
-			if classesAllowed then
-				if not strfind(classesAllowed, class, 1, true) then return false end
-			end
+			local _, _, classesAllowed = strfind(text or "", Patterns.classes)
+			if classesAllowed and not strfind(classesAllowed, class, 1, true) then return false end
 		end
 	end
 
@@ -774,8 +772,8 @@ function SmokeyLoot.OnLoad()
 	this:RegisterEvent("GUILD_ROSTER_UPDATE")
 	this:RegisterEvent("CHAT_MSG_ADDON")
 	this:RegisterEvent("CHAT_MSG_SYSTEM")
-	this:RegisterEvent("CHAT_MSG_LOOT")
-	this:RegisterEvent("UI_ERROR_MESSAGE")
+	-- this:RegisterEvent("CHAT_MSG_LOOT")
+	-- this:RegisterEvent("UI_ERROR_MESSAGE")
 	this:RegisterEvent("PARTY_MEMBERS_CHANGED")
 	this:RegisterEvent("PARTY_LEADER_CHANGED")
 	this:RegisterEvent("PARTY_LOOT_METHOD_CHANGED")
@@ -1148,7 +1146,7 @@ function SmokeyLoot.OnEvent(event, arg1, arg2, arg3, arg4)
 			end
 
 			local channel = IsRaidOfficer() and "RAID_WARNING" or "RAID"
-			if SmokeyItem.recieved and SmokeyItem.givenTo then
+			if --[[SmokeyItem.recieved and]] SmokeyItem.givenTo then
 				if SmokeyItem.givenTo == SmokeyItem.tmogWinner then
 					SendChatMessage(format(fmt.trade, SmokeyItem.tmogWinner, SmokeyItem.tmogWinner, SmokeyItem.tmogWinRoll, "TMOG", SmokeyItem.link, SmokeyItem.winner, SmokeyItem.winner, SmokeyItem.winRoll, SmokeyItem.winType), channel)
 					if SmokeyItem.tmogWinner ~= UnitName("player") then
@@ -1171,27 +1169,29 @@ function SmokeyLoot.OnEvent(event, arg1, arg2, arg3, arg4)
 
 		SmokeyLoot.UpdateFrame()
 
-	elseif event == "CHAT_MSG_LOOT" then
-		local givenTo = SmokeyItem.givenTo
-		if givenTo == UnitName("player") then givenTo = YOU end
-		if not SmokeyItem.recieved and givenTo and string.find(arg1, SmokeyItem.link, 1, true) and string.find(arg1, givenTo, 1, true) then
-			SmokeyItem.recieved = true
-		end
+	-- elseif event == "CHAT_MSG_LOOT" then
+	-- 	local givenTo = SmokeyItem.givenTo
+	-- 	if givenTo == UnitName("player") then givenTo = YOU end
+	-- 	if not SmokeyItem.recieved and givenTo and string.find(arg1, SmokeyItem.link, 1, true) and string.find(arg1, givenTo, 1, true) then
+	-- 		SmokeyItem.recieved = true
+	-- 	end
 
-	elseif event == "UI_ERROR_MESSAGE" then
-		if SmokeyItem.givenTo then
-			if arg1 == ERR_LOOT_GONE
-				or arg1 == ERR_LOOT_MASTER_INV_FULL
-				or arg1 == ERR_LOOT_MASTER_OTHER
-				or arg1 == ERR_LOOT_MASTER_UNIQUE_ITEM
-				or arg1 == ERR_LOOT_PLAYER_NOT_FOUND
-			then
-				SmokeyItem.givenTo = nil
-				SmokeyItem.recieved = nil
-			end
-		end
+	-- elseif event == "UI_ERROR_MESSAGE" then
+	-- 	if SmokeyItem.givenTo then
+	-- 		if arg1 == ERR_LOOT_GONE
+	-- 			or arg1 == ERR_LOOT_MASTER_INV_FULL
+	-- 			or arg1 == ERR_LOOT_MASTER_OTHER
+	-- 			or arg1 == ERR_LOOT_MASTER_UNIQUE_ITEM
+	-- 			or arg1 == ERR_LOOT_PLAYER_NOT_FOUND
+	-- 		then
+	-- 			SmokeyItem.givenTo = nil
+	-- 			SmokeyItem.recieved = nil
+	-- 		end
+	-- 	end
 
-	elseif event == "CHAT_MSG_ADDON" and arg1 == "SmokeyLoot" then
+	elseif event == "CHAT_MSG_ADDON" then
+		if arg1 ~= "SmokeyLoot" then return end
+
 		local message = arg2
 		local channel = arg3
 		local sender = arg4
@@ -1952,7 +1952,6 @@ function SmokeyLoot.StartOrEndRoll(slot)
 		end
 
 		if itemID == SmokeyItem.id then
-			local winnerFound = false
 			if GetNumRaidMembers() > 0 then
 				local name
 				SmokeyItem.tmogIgnored = SmokeyLootMLFrameIgnoreTmog:GetChecked()
@@ -1965,9 +1964,8 @@ function SmokeyLoot.StartOrEndRoll(slot)
 					if name == GetMasterLootCandidate(i) then
 						-- if SmokeyItem.lootSource ~= "chest" then
 							SmokeyItem.givenTo = name
-							SmokeyItem.recieved = nil
+							-- SmokeyItem.recieved = nil
 							GiveMasterLoot(SmokeyItem.slot, i)
-							winnerFound = true
 						-- else
 						-- 	SmokeyLoot.OnEvent("LOOT_SLOT_CLEARED", SmokeyItem.slot)
 						-- end
@@ -1975,7 +1973,7 @@ function SmokeyLoot.StartOrEndRoll(slot)
 					end
 				end
 			end
-			if not winnerFound then
+			if not SmokeyItem.givenTo then
 				slmsg("Roll cancelled - winner was not found in candidates list.")
 				SmokeyLoot.CancelRoll()
 			end
