@@ -1938,9 +1938,10 @@ function SmokeyLoot.StartOrEndRoll(slot)
 		SmokeyItem.candidatesSR = concat(SRCandidates, ",")
 		SmokeyItem.candidates = concat(Candidates, ",")
 		if table.getn(SRCandidates) > 0 then
-			link = link.." (SR by "..SmokeyItem.candidatesSR..")"
+			SendChatMessage("Starting roll on "..link.." (SR by "..concat(SRCandidates, ", ")..")", IsRaidOfficer() and "RAID_WARNING" or "RAID")
+		else
+			SendChatMessage("Starting roll on "..link, IsRaidOfficer() and "RAID_WARNING" or "RAID")
 		end
-		SendChatMessage("Starting roll on "..link, IsRaidOfficer() and "RAID_WARNING" or "RAID")
 		SendAddonMessage("SmokeyLoot", format("StartRoll:%d;%s;%s;%s;%s;%d;%d;%s", itemID, itemName, itemTexture, SmokeyItem.candidatesSR, SmokeyItem.candidates, itemCount, itemQuality, link), "RAID")
 		LootSourceFrame:Show()
 
