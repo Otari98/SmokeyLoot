@@ -999,9 +999,9 @@
 					this:StopMovingOrSizing()
 				end
 			</OnDragStop>
-			<!-- <OnShow>
-				SmokeyLoot.UpdateMLFrame()
-			</OnShow> -->
+			<OnShow>
+				SmokeyLoot.MLFrameOnShow()
+			</OnShow>
 		</Scripts>
 	</Frame>
 	<!-- Import frame -->

@@ -94,10 +94,10 @@
 		</Layers>
 		<Scripts>
 			<OnEnter>
-				getglobal(this:GetName().."Highlight"):Show()
+				_G[this:GetName().."Highlight"]:Show()
 			</OnEnter>
 			<OnLeave>
-				getglobal(this:GetName().."Highlight"):Hide()
+				_G[this:GetName().."Highlight"]:Hide()
 				GameTooltip:Hide()
 			</OnLeave>
 		</Scripts>
