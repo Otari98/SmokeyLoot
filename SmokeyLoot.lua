@@ -583,9 +583,10 @@ function CanRollTransmog(itemID, unit)
 	if itemEquipLoc == "INVTYPE_HOLDABLE" then return true end
 
 	local class, enClass = UnitClass(unit)
+	local _, race = UnitRace(unit)
 
 	-- check itemSubTypes for our class
-	if not SubTypesForClass[enClass][itemSubType] then return false end
+	if not SubTypesForClass[enClass][itemSubType] and not (enClass == "PRIEST" and race == "NightElf" and itemSubType == L["Bows"]) then return false end
 
 	-- some bullshit combination
 	if itemType == L["Weapon"] and itemSubType == L["Miscellaneous"] then return false end
