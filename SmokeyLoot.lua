@@ -4,25 +4,12 @@ SmokeyLoot = {}
 SmokeyItem = {}
 SmokeyLoot.Item = SmokeyItem
 
-function SmokeyItem:Reset()
-	self.id = nil
-	self.link = nil
-	self.slot = nil
-	self.winner = nil
-	self.winType = nil
-	self.winRoll = 0
-	self.tmogWinner = nil
-	self.tmogWinRoll = 0
-	self.tmogIgnored = nil
-	self.lowestPlus = 420
-	self.lowestHR = 420
-	self.lootSource = nil
-	-- self.recieved = nil
-	self.givenTo = nil
-	self.candidates = ""
-	self.candidatesSR = ""
-end
-SmokeyItem:Reset()
+local Sounds = {
+	dropped = { "choir", "alert", "rizz", "drumroll", "zelda-item" },
+	won = { "jackpot", "gangsta", "mission-complete", "confetti", "duck", "congrats" },
+	lost = { "sad", "wasted", "not-fine", "fart", "spongebob", "you-idiot", "pacman", "loser-tune", "lose-horn", "mario" },
+	outrolled = { "faaah", "fart", "bruh", "shocked", "hell-nah", "oof" },
+}
 
 SmokeyLoot.NonTradeableBosses = {
 	["Lord Kazzak"] = true,
@@ -499,6 +486,28 @@ local function listwipe(list)
 	end
 end
 
+function SmokeyItem:Reset()
+	self.id = nil
+	self.link = nil
+	self.slot = nil
+	self.winner = nil
+	self.winType = nil
+	self.winRoll = 0
+	self.tmogWinner = nil
+	self.tmogWinRoll = 0
+	self.tmogIgnored = nil
+	self.lowestPlus = 420
+	self.lowestHR = 420
+	self.lootSource = nil
+	-- self.recieved = nil
+	self.givenTo = nil
+	self.candidates = ""
+	self.candidatesSR = ""
+	self.choise = nil
+	listwipe(Rolls)
+end
+SmokeyItem:Reset()
+
 local temp = {}
 local function SortRaidByDisabled()
 	arraywipe(temp)
@@ -887,7 +896,7 @@ function SmokeyLoot.OnEvent(event, arg1, arg2, arg3, arg4)
 			for k, v in ipairs(SMOKEYLOOT.RAID) do
 				if v.char == joined then
 					v.enabled = true
-					sort(SMOKEYLOOT.RAID, sortfunc)
+					table.sort(SMOKEYLOOT.RAID, sortfunc)
 					SortRaidByDisabled()
 					SmokeyLoot.PushRaid()
 					if SmokeyLootFrame:IsShown() then
@@ -905,7 +914,7 @@ function SmokeyLoot.OnEvent(event, arg1, arg2, arg3, arg4)
 				pluses = 0,
 				enabled = true,
 			})
-			sort(SMOKEYLOOT.RAID, sortfunc)
+			table.sort(SMOKEYLOOT.RAID, sortfunc)
 			SortRaidByDisabled()
 			SmokeyLoot.PushRaid()
 
@@ -964,7 +973,7 @@ function SmokeyLoot.OnEvent(event, arg1, arg2, arg3, arg4)
 					pluses = 0,
 					enabled = true,
 				})
-				sort(SMOKEYLOOT.RAID, sortfunc)
+				table.sort(SMOKEYLOOT.RAID, sortfunc)
 				SortRaidByDisabled()
 
 				SmokeyLoot.PushRaid()
@@ -1082,7 +1091,11 @@ function SmokeyLoot.OnEvent(event, arg1, arg2, arg3, arg4)
 			AlreadyRolled[player] = true
 		end
 
+		local wasWinner = SmokeyItem.winner == UnitName("player")
 		SmokeyLoot.GetWinner()
+		if wasWinner and SmokeyItem.winner ~= UnitName("player") then
+			PlaySoundFile("Interface\\AddOns\\SmokeyLoot\\Sounds\\"..Sounds.outrolled[math.random(table.getn(Sounds.outrolled))]..".mp3")
+		end
 
 		if SmokeyLootMLFrame:IsShown() then
 			SmokeyLoot.UpdateMLFrame()
@@ -1148,9 +1161,11 @@ function SmokeyLoot.OnEvent(event, arg1, arg2, arg3, arg4)
 				elseif SmokeyItem.givenTo == SmokeyItem.winner then
 					SendChatMessage(string.format(fmt.win, SmokeyItem.winner, SmokeyItem.winner, SmokeyItem.link, SmokeyItem.winRoll, SmokeyItem.winType), channel)
 				end
+				SmokeyLoot.CancelRoll(true)
+			else
+				SmokeyLoot.CancelRoll()
 			end
 
-			SmokeyLoot.CancelRoll()
 			SmokeyLoot.PushRaid()
 		end
 
@@ -1206,7 +1221,6 @@ function SmokeyLoot.OnEvent(event, arg1, arg2, arg3, arg4)
 				local r, g, b = GetItemQualityColor(tonumber(quality))
 				SmokeyLootPopupFrameName:SetText(name)
 				SmokeyLootPopupFrameName:SetTextColor(r, g, b)
-				SmokeyLootPopupFrame:Show()
 				SmokeyItem.id = tonumber(id)
 				SmokeyItem.link = link
 				SmokeyItem.candidatesSR = candidatesSR
@@ -1229,11 +1243,15 @@ function SmokeyLoot.OnEvent(event, arg1, arg2, arg3, arg4)
 					SmokeyLootPopupFrameSR:SetAlpha(0.5)
 				end
 
+				SmokeyLootPopupFrame:Show()
 				SmokeyLootPopupFrame:SetScript("OnUpdate", LootPopupOnUpdate)
 
 			elseif sender ~= UnitName("player") then
 				if string.find(message, "^EndRoll") and sender == SmokeyLoot.GetLootMasterName() then
 					-- ending roll, hide popup
+					if string.sub(message, -1, -1) == "0" then -- success
+						SmokeyLoot.PlayRollResultSound()
+					end
 					SmokeyLootPopupFrame:Hide()
 					SmokeyItem:Reset()
 					SmokeyLoot.UpdateRollers()
@@ -1715,14 +1733,15 @@ ChatFrame_OnHyperlinkShow = function(link, text, button)
 end
 
 function SmokeyLoot.Roll(choise)
-	if choise == "PASS" or not SmokeyItem.id then
+	if not SmokeyItem.id then
 		SmokeyLootPopupFrame:Hide()
 		return
 	end
 
+	SmokeyItem.choise = choise
+
 	local min = 1
 	local max
-
 	if choise == "HR" then
 		for k, v in ipairs(SMOKEYLOOT.DATABASE) do
 			if v.itemID == SmokeyItem.id and v.char == UnitName("player") and v.bonus > 100 then
@@ -1740,9 +1759,7 @@ function SmokeyLoot.Roll(choise)
 		max = 97
 	end
 
-	if max then
-		RandomRoll(min, max)
-	end
+	if max then RandomRoll(min, max) end
 
 	SmokeyLootPopupFrame:Hide()
 end
@@ -1972,16 +1989,17 @@ function SmokeyLoot.StartOrEndRoll(slot)
 				SmokeyLoot.CancelRoll()
 			end
 			SmokeyLootPopupFrame:Hide()
+			SmokeyLoot.PlayRollResultSound()
 		end
 	end
 
 	SmokeyLoot.UpdateMLFrame()
 end
 
-function SmokeyLoot.CancelRoll()
+function SmokeyLoot.CancelRoll(success)
 	SmokeyLootPopupFrame:Hide()
 	if IsMasterLooter() then
-		SendAddonMessage("SmokeyLoot", "EndRoll", "RAID")
+		SendAddonMessage("SmokeyLoot", "EndRoll"..(not success and "1" or "0"), "RAID")
 	end
 	SmokeyItem:Reset()
 	SmokeyLoot.UpdateMLFrame()
@@ -2142,7 +2160,7 @@ function SmokeyLoot.Import()
 		end
 	end
 
-	sort(SMOKEYLOOT.RAID, sortfunc)
+	table.sort(SMOKEYLOOT.RAID, sortfunc)
 	SortRaidByDisabled()
 
 	SmokeyLootImportFrame:Hide()
@@ -2363,7 +2381,7 @@ function SmokeyLoot.Push(requestedBy)
 	local items = {}
 	local messages = {}
 
-	sort(SMOKEYLOOT.DATABASE, sortfunc)
+	table.sort(SMOKEYLOOT.DATABASE, sortfunc)
 
 	for k, v in ipairs(SMOKEYLOOT.DATABASE) do
 		if type(v) == "table" then
@@ -2414,7 +2432,7 @@ function SmokeyLoot.PushRaid(clear)
 
 	arraywipe(messages)
 
-	sort(SMOKEYLOOT.RAID, sortfunc)
+	table.sort(SMOKEYLOOT.RAID, sortfunc)
 	SortRaidByDisabled()
 
 	for i, v in ipairs(SMOKEYLOOT.RAID) do
@@ -2654,7 +2672,7 @@ function SmokeyLoot.EditEntryFrameAcceptButton_OnClick()
 		SMOKEYLOOT.DATABASE[id].char = newChar
 		SMOKEYLOOT.DATABASE[id].bonus = newBonus
 
-		sort(SMOKEYLOOT.DATABASE, sortfunc)
+		table.sort(SMOKEYLOOT.DATABASE, sortfunc)
 
 		SmokeyLoot.SetRemoteVersion()
 		SmokeyLoot.UpdateHR()
@@ -2885,5 +2903,28 @@ SlashCmdList.SMOKEYLOOT = function(cmd)
 
 	else
 		printf("/sloot versions - query raid members addon version\n/sloot debug - toggle debug messages")
+	end
+end
+
+function SmokeyLoot.PopupFrame_OnShow()
+	if not SmokeyItem.id then return end
+	local soundFile
+	if MyHRItemIDs[SmokeyItem.id] or string.find(SmokeyItem.candidatesSR, UnitName("player"), 1, true) then
+		soundFile = Sounds.dropped[math.random(table.getn(Sounds.dropped))]
+	end
+	if soundFile then
+		PlaySoundFile("Interface\\AddOns\\SmokeyLoot\\Sounds\\"..soundFile..".mp3")
+	end
+end
+
+function SmokeyLoot.PlayRollResultSound()
+	local choise = SmokeyItem.choise
+	local winner = SmokeyItem.winner
+	if choise and choise ~= "PASS" and winner then
+		local sounds = winner == UnitName("player") and Sounds.won or Sounds.lost
+		local soundFile = sounds[math.random(table.getn(sounds))]
+		if soundFile then
+			PlaySoundFile("Interface\\AddOns\\SmokeyLoot\\Sounds\\"..soundFile..".mp3")
+		end
 	end
 end

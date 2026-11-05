@@ -833,6 +833,9 @@
 			<OnMouseUp>
 				this:StopMovingOrSizing()
 			</OnMouseUp>
+			<OnShow>
+				SmokeyLoot.PopupFrame_OnShow()
+			</OnShow>
 		</Scripts>
 	</Frame>
 	<!-- Master loot frame -->
