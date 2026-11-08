@@ -1,14 +1,21 @@
 _G = _G or getfenv(0)
+local Sauce = PizzaSauce
 
 SmokeyLoot = {}
 SmokeyItem = {}
 SmokeyLoot.Item = SmokeyItem
 
+local RollWeights = { ["HR"] = 4, ["SR"] = 3, ["MS"] = 2, ["OS"] = 1, ["TMOG"] = 1 }
+
 local Sounds = {
-	dropped = { "choir", "alert", "rizz", "drumroll", "zelda-item" },
-	won = { "jackpot", "gangsta", "mission-complete", "confetti", "duck", "congrats" },
-	lost = { "sad", "wasted", "not-fine", "fart", "spongebob", "you-idiot", "pacman", "loser-tune", "lose-horn", "mario" },
-	outrolled = { "faaah", "fart", "bruh", "shocked", "hell-nah", "oof" },
+	dropped = { "choir", "alert", "rizz", "drumroll", "zelda-item", "soad-wake-up" },
+	won = { "jackpot", "mission-complete", "confetti", "duck", "congrats", "epicsaxguy", "gigachad-phonk", "money" },
+	lost = { "sad", "wasted", "not-fine", "spongebob", "pacman", "loser-tune", "mario", "bo-womp", "titanic", "meow", "guts", "sad-trumpet" },
+	outrolled = { "faaah", "fart", "bruh", "shocked", "hell-nah", "oof", "bo-womp", "wth", "oh-no", "oh-nou", "nope" },
+	rolled69 = { "noice", "nice" },
+	rolled1 = { "faaah", "bruh", "shocked", "hell-nah", "oof", "haha", "wasted", "omg", "sad-trumpet", "bo-womp", "wth" },
+	rolled100 = { "drop", "mlg-ohhh", "mlg-legolas", "headshot", "mlg", "turn-down-for-what", "damn-son", "gigachad" },
+	unwinnable = { "stupid-boy", "are-you-stupid", "freeman-you-fool", "bruh", "bo-womp", "huh", "confused-song", "nope", "crazy" },
 }
 
 SmokeyLoot.NonTradeableBosses = {
@@ -157,7 +164,7 @@ local fmt = {
 
 local Patterns = {
 	newMaster = string.gsub(ERR_NEW_LOOT_MASTER_S, "%%s", "(.+)"), -- "(.+) is now the loot master."
-	rollResult = string.gsub(string.gsub(RANDOM_ROLL_RESULT, "%%s", "(.+)"), "%%d %(%%d%-%%d%)", "(%%d+) %%(%%d%%-(%%d+)%%)"), -- "(.+) rolls (%d+) %((%d+)%-(%d+)%)"
+	rollResult = string.gsub(string.gsub(RANDOM_ROLL_RESULT, "%%s", "(.+)"), "%%d %(%%d%-%%d%)", "(%%d+) %%((%%d+)%%-(%%d+)%%)"), -- "(.+) rolls (%d+) %((%d+)%-(%d+)%)"
 	memberJoined = string.gsub(ERR_RAID_MEMBER_ADDED_S, "%%s", "(.+)"), -- "(.+) has joined the raid group"
 	memberLeft = string.gsub(ERR_RAID_MEMBER_REMOVED_S, "%%s", "(.+)"), -- "(.+) has left the raid group"
 	resist = string.gsub(string.gsub(ITEM_RESIST_SINGLE, "%%c%%d", "+(%%d+)"), "%%s", ".+"), -- "+(%d+) .+ Resistance"
@@ -171,7 +178,6 @@ local CurrentLootSource = nil
 local Master = nil
 local Pusher = nil
 
-local debugMessages = false
 local Pulling = false
 local Pushing = false
 local PushAfter = false
@@ -444,7 +450,7 @@ local function printf(f, ...)
 end
 
 local function debugprint(...)
-	if not debugMessages then return end
+	if not SmokeyLootConfig.debugMessages then return end
 	local size = table.getn(arg)
 	for i = 1, size do arg[i] = tostring(arg[i]) end
 	local msg = size > 1 and table.concat(arg, " ") or tostring(arg[1])
@@ -495,7 +501,7 @@ function SmokeyItem:Reset()
 	self.winRoll = 0
 	self.tmogWinner = nil
 	self.tmogWinRoll = 0
-	self.tmogIgnored = nil
+	self.tmogIgnored = false
 	self.lowestPlus = 420
 	self.lowestHR = 420
 	self.lootSource = nil
@@ -809,15 +815,19 @@ end
 
 local lookup = {}
 function SmokeyLoot.OnEvent(event, arg1, arg2, arg3, arg4)
-	if event == "ADDON_LOADED" and arg1 == "SmokeyLoot" then
-		debugprint(event)
-		this:UnregisterEvent("ADDON_LOADED")
+	if event == "ADDON_LOADED" then
+		if arg1 ~= "SmokeyLoot" then return end
+		this:UnregisterEvent(event)
 
 		if not SMOKEYLOOT then SMOKEYLOOT = {} end
 		if not SMOKEYLOOT.DATABASE then SMOKEYLOOT.DATABASE = { date = 0 } end
 		if not SMOKEYLOOT.HR then SMOKEYLOOT.HR = {} end
 		if not SMOKEYLOOT.GUILD then SMOKEYLOOT.GUILD = {} end
 		if not SMOKEYLOOT.RAID then SMOKEYLOOT.RAID = {} end
+		if not SmokeyLootConfig then SmokeyLootConfig = {} end
+		SmokeyLootConfig.sounds = SmokeyLootConfig.sounds == nil and true or SmokeyLootConfig.sounds
+		SmokeyLootConfig.debugMessages = SmokeyLootConfig.debugMessages == nil and false or SmokeyLootConfig.debugMessages
+		SmokeyLootConfig.alerts = SmokeyLootConfig.alerts == nil and true or SmokeyLootConfig.alerts
 
 		SmokeyLootMinimapButton:ClearAllPoints()
 		SmokeyLootMinimapButton:SetPoint("CENTER", UIParent, "BOTTOMLEFT", unpack(SMOKEYLOOT.POSITION or {SmokeyLootMinimapButton:GetCenter()}))
@@ -831,7 +841,7 @@ function SmokeyLoot.OnEvent(event, arg1, arg2, arg3, arg4)
 		GuildRoster()
 
 	elseif event == "GUILD_ROSTER_UPDATE" then
-		debugprint(event)
+		-- debugprint(event)
 		if not SMOKEYLOOT then SMOKEYLOOT = {} end
 		if not SMOKEYLOOT.GUILD then SMOKEYLOOT.GUILD = {} end
 
@@ -863,7 +873,7 @@ function SmokeyLoot.OnEvent(event, arg1, arg2, arg3, arg4)
 		SmokeyLoot.RegisterTargetChange()
 
 	elseif event == "RAID_ROSTER_UPDATE" then
-		debugprint(event)
+		-- debugprint(event)
 		SmokeyLoot.UpdateRollers()
 		SmokeyLoot.EnableRaidControls()
 		SmokeyLoot.RegisterTargetChange()
@@ -930,8 +940,8 @@ function SmokeyLoot.OnEvent(event, arg1, arg2, arg3, arg4)
 		-- Reading rolls from chat
 		if not SmokeyItem.id then return end
 
-		local _, _, player, roll, max = string.find(arg1, Patterns.rollResult)
-		roll, max = tonumber(roll), tonumber(max)
+		local _, _, player, roll, min, max = string.find(arg1, Patterns.rollResult)
+		roll, min, max = tonumber(roll), tonumber(min), tonumber(max)
 		debugprint(event, "player:", player, "roll:", roll, "max:", max, "AlreadyRolled:", AlreadyRolled[player])
 
 		if isMaster and AlreadyRolled[player] then
@@ -995,8 +1005,15 @@ function SmokeyLoot.OnEvent(event, arg1, arg2, arg3, arg4)
 				return
 			end
 
-			if max > 100 then
-				-- this is HR roll
+			local rollType
+			if max > 100 then rollType = "HR"
+			elseif max == 100 then rollType = "SR"
+			elseif max == 99 then rollType = "MS"
+			elseif max == 98 then rollType = "OS"
+			elseif max == 97 then rollType = "TMOG"
+			else return end
+
+			if rollType == "HR" then
 				local isAllowed = false
 				for k, v in ipairs(SMOKEYLOOT.DATABASE) do
 					if v.itemID == SmokeyItem.id and v.char == player and v.bonus == max then
@@ -1017,14 +1034,7 @@ function SmokeyLoot.OnEvent(event, arg1, arg2, arg3, arg4)
 					printf("%s is not allowed to roll HR on %s.", player, SmokeyItem.link)
 				end
 
-			elseif max == 100 then
-				-- this is SR roll
-				-- if not strfind(SmokeyItem.candidatesSR, player, 1, true) then
-				-- 	if isMaster then
-				-- 		slmsg(format("%s is not a candidate for %s.", player, SmokeyItem.link))
-				-- 	end
-				-- 	return
-				-- end
+			elseif rollType == "SR" then
 				local isAllowed = false
 				for k, v in ipairs(SMOKEYLOOT.RAID) do
 					if v.itemID == SmokeyItem.id and v.char == player then
@@ -1038,8 +1048,7 @@ function SmokeyLoot.OnEvent(event, arg1, arg2, arg3, arg4)
 					printf("%s is not allowed to roll SR on %s.", player, SmokeyItem.link)
 				end
 
-			elseif max == 99 then
-				-- this is MS roll
+			elseif rollType == "MS" then
 				local isAllowed = false
 				for i = 1, 40 do
 					if UnitName("raid"..i) == player then
@@ -1067,12 +1076,10 @@ function SmokeyLoot.OnEvent(event, arg1, arg2, arg3, arg4)
 					printf("%s is not allowed to roll MS on %s.", player, SmokeyItem.link)
 				end
 
-			elseif max == 98 then
-				-- this is OS roll
+			elseif rollType == "OS" then
 				Rolls.OS[player] = roll
 
-			elseif max == 97 then
-				-- this is Transmog roll
+			elseif rollType == "TMOG" then
 				local isAllowed
 				for i = 1, 40 do
 					if UnitName("raid"..i) == player then
@@ -1089,12 +1096,36 @@ function SmokeyLoot.OnEvent(event, arg1, arg2, arg3, arg4)
 			end
 
 			AlreadyRolled[player] = true
-		end
 
-		local wasWinner = SmokeyItem.winner == UnitName("player")
-		SmokeyLoot.GetWinner()
-		if wasWinner and SmokeyItem.winner ~= UnitName("player") then
-			PlaySoundFile("Interface\\AddOns\\SmokeyLoot\\Sounds\\"..Sounds.outrolled[math.random(table.getn(Sounds.outrolled))]..".mp3")
+			local name = UnitName("player")
+			local wasWinner = SmokeyItem.winner == name
+			local wasTmogWinner = SmokeyItem.tmogWinner == name
+
+			SmokeyLoot.GetWinner()
+
+			if SmokeyLootConfig.sounds and SmokeyItem.winner ~= name and SmokeyItem.tmogWinner ~= name and (wasWinner or wasTmogWinner or (player == name)) then
+				local soundFile
+				if RollWeights[SmokeyItem.winType] and RollWeights[rollType] and RollWeights[rollType] < RollWeights[SmokeyItem.winType] then
+					soundFile = Sounds.unwinnable[math.random(table.getn(Sounds.unwinnable))]
+					debugprint("playing unwinnable sound ["..soundFile.."] for ["..name.."]")
+				else
+					soundFile = Sounds.outrolled[math.random(table.getn(Sounds.outrolled))]
+					debugprint("playing outrolled sound ["..soundFile.."] for ["..name.."]")
+				end
+				if soundFile then
+					PlaySoundFile("Interface\\AddOns\\SmokeyLoot\\Sounds\\"..soundFile..".mp3")
+				end
+			end
+			if roll == 1 or roll == 69 or roll == max and min == 1 then
+				if player == name then
+					local key = "rolled"..(roll ~= max and roll or "100")
+					local soundFile = Sounds[key][math.random(table.getn(Sounds[key]))]
+					if soundFile then
+						SendAddonMessage("SmokeyLoot", "playsound;"..soundFile..";", "RAID")
+					end
+				end
+				SmokeyLoot.AlertAnimation(player, roll)
+			end
 		end
 
 		if SmokeyLootMLFrame:IsShown() then
@@ -1161,6 +1192,7 @@ function SmokeyLoot.OnEvent(event, arg1, arg2, arg3, arg4)
 				elseif SmokeyItem.givenTo == SmokeyItem.winner then
 					SendChatMessage(string.format(fmt.win, SmokeyItem.winner, SmokeyItem.winner, SmokeyItem.link, SmokeyItem.winRoll, SmokeyItem.winType), channel)
 				end
+				SmokeyLoot.PlayRollResultSound()
 				SmokeyLoot.CancelRoll(true)
 			else
 				SmokeyLoot.CancelRoll()
@@ -1246,17 +1278,14 @@ function SmokeyLoot.OnEvent(event, arg1, arg2, arg3, arg4)
 				SmokeyLootPopupFrame:Show()
 				SmokeyLootPopupFrame:SetScript("OnUpdate", LootPopupOnUpdate)
 
-			elseif sender ~= UnitName("player") then
-				if string.find(message, "^EndRoll") and sender == SmokeyLoot.GetLootMasterName() then
-					-- ending roll, hide popup
-					if string.sub(message, -1, -1) == "0" then -- success
-						SmokeyLoot.PlayRollResultSound()
-					end
-					SmokeyLootPopupFrame:Hide()
-					SmokeyItem:Reset()
-					SmokeyLoot.UpdateRollers()
+			elseif string.find(message, "playsound;") then
+				if SmokeyLootConfig.sounds then
+					local soundFile = string.gsub(message, "playsound;(.*);", "%1", 1)
+					PlaySoundFile("Interface\\AddOns\\SmokeyLoot\\Sounds\\"..soundFile..".mp3")
+				end
 
-				elseif message == "REPORT_ADDON_VERSION" then
+			elseif sender ~= UnitName("player") then
+				if message == "REPORT_ADDON_VERSION" then
 					debugprint(message, sender)
 					SendAddonMessage("SmokeyLoot", "V_"..GetAddOnMetadata("SmokeyLoot", "Version"), "RAID")
 
@@ -1283,37 +1312,54 @@ function SmokeyLoot.OnEvent(event, arg1, arg2, arg3, arg4)
 					end
 					debugprint(message, sender, "master:", Master)
 					SmokeyLoot.EnableRaidControls()
+				end
 
-				-- raid update
-				elseif string.find(message, "R_start", 1, true) then
-					local usingPlus = string.sub(message, 9, 9)
-					local isBongoAlt = string.sub(message, 11, 11)
-					debugprint(message, "usingPlus:", usingPlus, "bongoAlt:", isBongoAlt)
-					arraywipe(SMOKEYLOOT.RAID)
-					SMOKEYLOOT.RAID.isPlusOneRaid = usingPlus == "1"
-					SMOKEYLOOT.RAID.isBongoAltRaid = isBongoAlt == "1"
+				if sender == SmokeyLoot.GetLootMasterName() then
+					if string.find(message, "tmogIgnored", 1, true) then
+						SmokeyItem.tmogIgnored = string.sub(message, -1, -1) == "1" and true or false
+						SmokeyLoot.GetWinner()
+				
+					elseif string.find(message, "^EndRoll") then
+						-- ending roll, hide popup
+						debugprint(message, sender)
+						if string.sub(message, -1, -1) == "0" then -- success
+							SmokeyLoot.PlayRollResultSound()
+						end
+						SmokeyLootPopupFrame:Hide()
+						SmokeyItem:Reset()
+						SmokeyLoot.UpdateRollers()
 
-				elseif message == "R_end" then
-					SmokeyLoot.UpdateFrame()
-					debugprint(message, sender)
+					-- raid update
+					elseif string.find(message, "R_start", 1, true) then
+						local usingPlus = string.sub(message, 9, 9)
+						local isBongoAlt = string.sub(message, 11, 11)
+						debugprint(message, "usingPlus:", usingPlus, "bongoAlt:", isBongoAlt)
+						arraywipe(SMOKEYLOOT.RAID)
+						SMOKEYLOOT.RAID.isPlusOneRaid = usingPlus == "1"
+						SMOKEYLOOT.RAID.isBongoAltRaid = isBongoAlt == "1"
 
-				elseif message == "R_clear" then
-					debugprint(message, sender)
-					arraywipe(SMOKEYLOOT.RAID)
-					SmokeyLoot.UpdateFrame()
+					elseif message == "R_end" then
+						SmokeyLoot.UpdateFrame()
+						debugprint(message, sender)
 
-				else
-					local _, _, key, itemID, item, char, bonus, pluses, enabled, gotHR = string.find(message, "^(%d+);(%d+);(.*);(.*);(%-?%d+);(%d+);(%d);(.*)")
-					if key then
-						table.insert(SMOKEYLOOT.RAID, tonumber(key), {
-							itemID = tonumber(itemID),
-							item = item,
-							char = char,
-							bonus = tonumber(bonus),
-							pluses = tonumber(pluses),
-							enabled = enabled == "1",
-							gotHR = (gotHR ~= "" and strsplit(gotHR, ",")) or nil
-						})
+					elseif message == "R_clear" then
+						debugprint(message, sender)
+						arraywipe(SMOKEYLOOT.RAID)
+						SmokeyLoot.UpdateFrame()
+
+					else
+						local _, _, key, itemID, item, char, bonus, pluses, enabled, gotHR = string.find(message, "^(%d+);(%d+);(.*);(.*);(%-?%d+);(%d+);(%d);(.*)")
+						if key then
+							table.insert(SMOKEYLOOT.RAID, tonumber(key), {
+								itemID = tonumber(itemID),
+								item = item,
+								char = char,
+								bonus = tonumber(bonus),
+								pluses = tonumber(pluses),
+								enabled = enabled == "1",
+								gotHR = (gotHR ~= "" and strsplit(gotHR, ",")) or nil
+							})
+						end
 					end
 				end
 			end
@@ -1740,7 +1786,6 @@ function SmokeyLoot.Roll(choise)
 
 	SmokeyItem.choise = choise
 
-	local min = 1
 	local max
 	if choise == "HR" then
 		for k, v in ipairs(SMOKEYLOOT.DATABASE) do
@@ -1759,7 +1804,7 @@ function SmokeyLoot.Roll(choise)
 		max = 97
 	end
 
-	if max then RandomRoll(min, max) end
+	if max then RandomRoll(1, max) end
 
 	SmokeyLootPopupFrame:Hide()
 end
@@ -1889,7 +1934,7 @@ function SmokeyLoot.GetWinner()
 		end
 	end
 
-	if SmokeyItem.winner and next(Rolls.TMOG) then
+	if SmokeyItem.winner and next(Rolls.TMOG) and not SmokeyItem.tmogIgnored then
 		for k, v in pairs(Rolls.TMOG) do
 			if v > SmokeyItem.tmogWinRoll and k ~= SmokeyItem.winner then
 				SmokeyItem.tmogWinRoll = v
@@ -1965,7 +2010,7 @@ function SmokeyLoot.StartOrEndRoll(slot)
 		if itemID == SmokeyItem.id then
 			if GetNumRaidMembers() > 0 then
 				local name
-				SmokeyItem.tmogIgnored = SmokeyLootMLFrameIgnoreTmog:GetChecked()
+				SmokeyItem.tmogIgnored = SmokeyLootMLFrameIgnoreTmog:GetChecked() and true or false
 				if SmokeyItem.tmogWinner and not SmokeyItem.tmogIgnored then
 					name = SmokeyItem.tmogWinner
 				else
@@ -1989,7 +2034,6 @@ function SmokeyLoot.StartOrEndRoll(slot)
 				SmokeyLoot.CancelRoll()
 			end
 			SmokeyLootPopupFrame:Hide()
-			SmokeyLoot.PlayRollResultSound()
 		end
 	end
 
@@ -2005,6 +2049,7 @@ function SmokeyLoot.CancelRoll(success)
 	SmokeyLoot.UpdateMLFrame()
 	SmokeyLoot.UpdateRollers()
 	LootSourceFrame:Hide()
+	debugprint("CancelRoll", success)
 end
 
 function SmokeyLoot.MLFrameOnShow()
@@ -2852,9 +2897,11 @@ function SmokeyLoot.AnnounceLoot()
 	end
 end
 
-SLASH_SMOKEYLOOT1 = "/sloot"
+SLASH_SMOKEYLOOT1 = "/smokeyloot"
+SLASH_SMOKEYLOOT2 = "/sloot"
 
 SlashCmdList.SMOKEYLOOT = function(cmd)
+	cmd = string.lower(cmd)
 	if cmd == "versions" then
 		if GetNumRaidMembers() == 0 then
 			printf("You need to be in a raid group to query addon version.")
@@ -2898,33 +2945,117 @@ SlashCmdList.SMOKEYLOOT = function(cmd)
 		end)
 
 	elseif cmd == "debug" then
-		debugMessages = not debugMessages
-		printf("debug messages: "..tostring(debugMessages))
+		SmokeyLootConfig.debugMessages = not SmokeyLootConfig.debugMessages
+		printf("debug messages %s", SmokeyLootConfig.debugMessages and "on" or "off")
+
+	elseif cmd == "sounds" then
+		SmokeyLootConfig.sounds = not SmokeyLootConfig.sounds
+		printf("sounds %s", SmokeyLootConfig.sounds and "on" or "off")
+
+	elseif cmd == "alerts" then
+		SmokeyLootConfig.alerts = not SmokeyLootConfig.alerts
+		printf("alerts %s", SmokeyLootConfig.alerts and "on" or "off")
 
 	else
-		printf("/sloot versions - query raid members addon version\n/sloot debug - toggle debug messages")
+		printf("/sloot versions - query raid members addon version")
+		printf("/sloot sounds - toggle sounds")
+		printf("/sloot alerts - toggle roll alerts")
+		printf("/sloot debug - toggle debug messages")
 	end
 end
 
 function SmokeyLoot.PopupFrame_OnShow()
 	if not SmokeyItem.id then return end
+	if not SmokeyLootConfig.sounds then return end
 	local soundFile
 	if MyHRItemIDs[SmokeyItem.id] or string.find(SmokeyItem.candidatesSR, UnitName("player"), 1, true) then
 		soundFile = Sounds.dropped[math.random(table.getn(Sounds.dropped))]
 	end
 	if soundFile then
+		debugprint("playing on show ["..soundFile.."] for ["..UnitName("player").."]")
 		PlaySoundFile("Interface\\AddOns\\SmokeyLoot\\Sounds\\"..soundFile..".mp3")
 	end
 end
 
 function SmokeyLoot.PlayRollResultSound()
+	if not SmokeyLootConfig.sounds then return end
 	local choise = SmokeyItem.choise
 	local winner = SmokeyItem.winner
-	if choise and choise ~= "PASS" and winner then
-		local sounds = winner == UnitName("player") and Sounds.won or Sounds.lost
+	local tmogWinner = SmokeyItem.tmogWinner
+	if choise and choise ~= "PASS" and (winner or tmogWinner) then
+		local name = UnitName("player")
+		local sounds = (winner == name or tmogWinner == name) and Sounds.won or Sounds.lost
 		local soundFile = sounds[math.random(table.getn(sounds))]
 		if soundFile then
+			debugprint("playing ["..soundFile.."] for ["..name.."]")
 			PlaySoundFile("Interface\\AddOns\\SmokeyLoot\\Sounds\\"..soundFile..".mp3")
 		end
 	end
 end
+
+Sauce:RegisterType("customScale", {
+	init = function(target, from)
+		return from or target:GetScale()
+	end,
+	apply = function(target, from, to, t)
+		local size = from + (to - from) * t
+		target:SetScale(math.max(1, size))
+	end,
+})
+
+function SmokeyLoot.AlertAnimation(name, roll)
+	if not SmokeyLootConfig.alerts then return end
+	Sauce:Stop(SmokeyLootAlert)
+	SmokeyLootAlert:Show()
+	if roll > 69 then
+		SmokeyLootAlertText:SetText(name.." rolls "..roll.."!")
+		Sauce:Sequence({
+			Sauce:Group({
+				Sauce:SlideIn(SmokeyLootAlert, "DOWN", 40, 4),
+				Sauce:FadeIn(SmokeyLootAlert, 4),
+			}),
+			Sauce:Tween(SmokeyLootAlert, { type = "customScale", from = 1, to = 1.1, duration = 0.2 }),
+			Sauce:Tween(SmokeyLootAlert, { type = "customScale", from = 1.1, to = 1, duration = 0.2 }),
+			Sauce:Tween(SmokeyLootAlert, { type = "customScale", from = 1, to = 1.1, duration = 0.2 }),
+			Sauce:Tween(SmokeyLootAlert, { type = "customScale", from = 1.1, to = 1, duration = 0.2 }),
+			Sauce:Tween(SmokeyLootAlert, { type = "customScale", from = 1, to = 1.1, duration = 0.2 }),
+			Sauce:Tween(SmokeyLootAlert, { type = "customScale", from = 1.1, to = 1, duration = 0.2 }),
+			Sauce:Shake(SmokeyLootAlert, 5, 1),
+			Sauce:Tween(SmokeyLootAlert, { type = "customScale", from = 1, to = 1.1, duration = 0.2 }),
+			Sauce:Tween(SmokeyLootAlert, { type = "customScale", from = 1.1, to = 1, duration = 0.2 }),
+			Sauce:Tween(SmokeyLootAlert, { type = "customScale", from = 1, to = 1.1, duration = 0.2 }),
+			Sauce:Tween(SmokeyLootAlert, { type = "customScale", from = 1.1, to = 1, duration = 0.2 }),
+			Sauce:Tween(SmokeyLootAlert, { type = "customScale", from = 1, to = 1.1, duration = 0.2 }),
+			Sauce:Tween(SmokeyLootAlert, { type = "customScale", from = 1.1, to = 1, duration = 0.2 }),
+			Sauce:Shake(SmokeyLootAlert, 5, 1),
+			Sauce:Tween(SmokeyLootAlert, { type = "customScale", from = 1, to = 1.1, duration = 0.2 }),
+			Sauce:Tween(SmokeyLootAlert, { type = "customScale", from = 1.1, to = 1, duration = 0.2 }),
+			Sauce:Tween(SmokeyLootAlert, { type = "customScale", from = 1, to = 1.1, duration = 0.2 }),
+			Sauce:Tween(SmokeyLootAlert, { type = "customScale", from = 1.1, to = 1, duration = 0.2 }),
+			Sauce:Tween(SmokeyLootAlert, { type = "customScale", from = 1, to = 1.1, duration = 0.2 }),
+			Sauce:Tween(SmokeyLootAlert, { type = "customScale", from = 1.1, to = 1, duration = 0.2 }),
+			Sauce:Shake(SmokeyLootAlert, 5, 1),
+			Sauce:FadeOut(SmokeyLootAlert, 0.4),
+		})
+	elseif roll == 69 then
+		SmokeyLootAlertText:SetText(name.." rolls 69! Nice!")
+		SmokeyLootAlert:Show()
+		Sauce:Sequence({
+			Sauce:SlideIn(SmokeyLootAlert, "DOWN", 40, 0.3),
+			Sauce:FadeOut(SmokeyLootAlert, 0.4, nil, { delay = 5 }),
+		})
+	elseif roll == 1 then
+		SmokeyLootAlertText:SetText(name.." rolls 1! ROFL")
+		SmokeyLootAlert:Show()
+		Sauce:Sequence({
+			Sauce:SlideIn(SmokeyLootAlert, "DOWN", 40, 0.3),
+			Sauce:Group({
+				Sauce:Shake(SmokeyLootAlert, 5, 0.2),
+				Sauce:Tween(SmokeyLootAlert, { type = "customScale", from = 1, to = 1.1, duration = 0.2 }),
+			}),
+			Sauce:Tween(SmokeyLootAlert, { type = "customScale", from = 1.1, to = 1, duration = 0.2 }),
+			Sauce:FadeOut(SmokeyLootAlert, 0.4, nil, { delay = 5 }),
+		})
+	end
+end
+

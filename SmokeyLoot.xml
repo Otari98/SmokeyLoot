@@ -933,6 +933,12 @@
 						GameTooltip:Hide()
 					</OnLeave>
 					<OnClick>
+						if IsMasterLooter() then
+							local checked = this:GetChecked() and true or false
+							SmokeyItem.tmogIgnored = checked
+							SendAddonMessage("SmokeyLoot", "tmogIgnored"..(checked and "1" or "0"), "RAID")
+						end
+						SmokeyLoot.GetWinner()
 						SmokeyLoot.UpdateMLFrame()
 						PlaySound("igMainMenuOptionCheckBoxOn")
 					</OnClick>
@@ -1129,5 +1135,16 @@
 				this:StopMovingOrSizing()
 			</OnDragStop>
 		</Scripts>
+	</Frame>
+	<Frame name="SmokeyLootAlert" parent="UIParent" hidden="true">
+		<Size x="300" y="100"/>
+		<Anchors>
+			<Anchor point="CENTER"><Offset x="0" y="100"/></Anchor>
+		</Anchors>
+		<Layers>
+			<Layer level="ARTWORK">
+				<FontString name="SmokeyLootAlertText" inherits="GameFontNormalHuge"/>
+			</Layer>
+		</Layers>
 	</Frame>
 </Ui>

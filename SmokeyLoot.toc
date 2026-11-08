@@ -1,9 +1,11 @@
 ## Interface: 11200
 ## Title: SmokeyLoot |cffc79c6e-Spit-|r
 ## Author: Otari
-## Version: 15
+## Version: 16
 ## Notes: A friend in need is a friend indeed, but a friend with weed is better!
+## SavedVariables: SmokeyLootConfig
 ## SavedVariablesPerCharacter: SMOKEYLOOT
 
+PizzaSauce.lua
 SmokeyLootTemplates.xml
 SmokeyLoot.xml
