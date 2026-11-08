@@ -739,9 +739,9 @@ DelayFrame:SetScript("OnUpdate", function()
 			GotResponse = false
 			DBSyncInProgress = false
 			SmokeyLootFrameProgressBar:Hide()
-			if CurrentTab ~= "RAID" then
+			-- if CurrentTab ~= "RAID" then
 				SmokeyLootPullButton:Show()
-			end
+			-- end
 			SmokeyLootPullButton:Enable()
 			SmokeyLoot.UpdateFrame()
 			printf("Database transfer aborted - timed out.")
@@ -1446,9 +1446,9 @@ function SmokeyLoot.OnEvent(event, arg1, arg2, arg3, arg4)
 					DelayFrame.dbElapsed = nil
 
 					SmokeyLootFrameProgressBar:Hide()
-					if CurrentTab ~= "RAID" then
+					-- if CurrentTab ~= "RAID" then
 						SmokeyLootPullButton:Show()
-					end
+					-- end
 					SmokeyLootPullButton:Enable()
 
 					local newSize = table.getn(incomingDB)
@@ -1682,6 +1682,8 @@ function SmokeyLoot.UpdateFrame()
 			SmokeyLootPullButton:Enable()
 		end
 	end
+
+	SmokeyLoot.EnableRaidControls()
 end
 
 local EntryTooltip = CreateFrame("GameTooltip", "SmokeyLootEntryTooltip", UIParent, "GameTooltipTemplate")
@@ -2290,7 +2292,7 @@ function SmokeyLoot.SwitchTab(switchTo)
 		SmokeyLootClearButton:Show()
 		SmokeyLootAddButton:Show()
 		SmokeyLoot.EnableRaidControls()
-		SmokeyLootPullButton:Hide()
+		-- SmokeyLootPullButton:Hide()
 
 	elseif switchTo == "DATABASE" then
 		SmokeyLootImportButton:Hide()
@@ -2443,15 +2445,16 @@ end
 
 function SmokeyLoot.FinishRaidButton_OnClick()
 	if not IsMasterLooter() then return end
-
+	SmokeyLoot.PullDB()
 	SmokeyLootFinishRaidButton:Disable()
-
-	if SMOKEYLOOT.DATABASE.date < SmokeyLoot.GetRemoteVersion() or DBSyncInProgress then
-		SmokeyLoot.PullDB()
-		-- PushAfterDBSync = true
-	else
-		SmokeyLoot.FinishRaidRoutine()
-	end
+	QueueFunction(3, function()
+		if SMOKEYLOOT.DATABASE.date < SmokeyLoot.GetRemoteVersion() or DBSyncInProgress then
+			SmokeyLoot.PullDB()
+			-- PushAfterDBSync = true
+		else
+			SmokeyLoot.FinishRaidRoutine()
+		end
+	end)
 end
 
 function SmokeyLoot.PullDB()
@@ -2896,7 +2899,11 @@ function SmokeyLoot.EnableRaidControls()
 	end
 
 	if table.getn(SMOKEYLOOT.RAID) > 0 and IsMasterLooter() then
-		SmokeyLootFinishRaidButton:Enable()
+		if not DBSyncInProgress then
+			SmokeyLootFinishRaidButton:Enable()
+		else
+			SmokeyLootFinishRaidButton:Disable()
+		end
 		SmokeyLootAddButton:Enable()
 		SmokeyLootClearButton:Enable()
 	else
