@@ -9,8 +9,8 @@ local RollWeights = { ["HR"] = 4, ["SR"] = 3, ["MS"] = 2, ["OS"] = 1, ["TMOG"] =
 
 local Sounds = {
 	dropped = { "choir", "alert", "rizz", "drumroll", "zelda-item", "soad-wake-up" },
-	won = { "jackpot", "mission-complete", "confetti", "duck", "congrats", "epicsaxguy", "gigachad-phonk", "money" },
-	lost = { "sad", "wasted", "not-fine", "spongebob", "pacman", "loser-tune", "mario", "bo-womp", "titanic", "meow", "guts", "sad-trumpet" },
+	won = { "jackpot", "mission-complete", "confetti", "duck", "congrats", "epicsaxguy", "gigachad-phonk", "money", "livesey" },
+	lost = { "sad", "wasted", "not-fine", "spongebob", "pacman", "loser-tune", "loser-horn", "mario", "bo-womp", "titanic", "meow", "guts", "sad-trumpet" },
 	outrolled = { "faaah", "fart", "bruh", "shocked", "hell-nah", "oof", "bo-womp", "wth", "oh-no", "oh-nou", "nope" },
 	rolled69 = { "noice", "nice" },
 	rolled1 = { "faaah", "bruh", "shocked", "hell-nah", "oof", "haha", "wasted", "omg", "sad-trumpet", "bo-womp", "wth" },
@@ -176,11 +176,14 @@ local CurrentTab = "DATABASE"
 
 local CurrentLootSource = nil
 local Master = nil
-local Pusher = nil
-
+local PullingFrom = nil
+local DBSyncInProgress = false
+local InitiatedDBSync = false
+local GotResponse = false
 local Pulling = false
 local Pushing = false
-local PushAfter = false
+local PushAfterDBSync = false
+
 local TargetChangeRegistered = false
 
 local LootButtonsMax = 6
@@ -451,12 +454,13 @@ end
 
 local function debugprint(...)
 	if not SmokeyLootConfig.debugMessages then return end
-	local size = table.getn(arg)
-	for i = 1, size do arg[i] = tostring(arg[i]) end
-	local msg = size > 1 and table.concat(arg, " ") or tostring(arg[1])
-	local time = GetTime()
-	DEFAULT_CHAT_FRAME:AddMessage("["..string.format("%.3f", time).."] "..msg)
-	return msg, time
+	for i = 1, table.getn(arg) do arg[i] = tostring(arg[i]) end
+	DEFAULT_CHAT_FRAME:AddMessage("["..string.format("%.3f", GetTime()).."] "..table.concat(arg, " "))
+end
+
+local function debugprintf(fmt, ...)
+	if not SmokeyLootConfig.debugMessages then return end
+	DEFAULT_CHAT_FRAME:AddMessage("["..string.format("%.3f", GetTime()).."] "..string.format(tostring(fmt), unpack(arg)))
 end
 
 local function strsplit(str, delimiter)
@@ -535,10 +539,11 @@ local function SortRaidByDisabled()
 end
 
 local function sortfunc(a, b)
+	local nameA, nameB = GetItemInfo(a.itemID or 0), (GetItemInfo(b.itemID or 0))
 	if a.itemID and b.itemID and a.itemID == b.itemID then
 		return a.bonus > b.bonus
-	elseif a.item and b.item then
-		return a.item < b.item
+	elseif nameA and nameB then
+		return nameA < nameB
 	else
 		return a.char < b.char
 	end
@@ -697,13 +702,14 @@ function IsBongoAlt(name)
 	-- return false
 end
 
-function IsOfficer(name)
+function SmokeyLoot.IsOfficer(name)
 	if not name or name == UnitName("player") then
 		local _, myRank = GetGuildInfo("player")
 		return IsInGuild() and OfficerRanks[myRank] ~= nil
 	else
-		if SMOKEYLOOT.GUILD[name] and SMOKEYLOOT.GUILD[name].rankName then
-			return OfficerRanks[SMOKEYLOOT.GUILD[name].rankName]
+		local member = SMOKEYLOOT.GUILD[name]
+		if member and member.rankName then
+			return OfficerRanks[member.rankName] ~= nil
 		end
 	end
 end
@@ -715,12 +721,32 @@ end
 
 local DelayFrame = CreateFrame("Frame")
 local FuncQueue = {}
+DelayFrame.dbElapsed = nil
+DelayFrame.dbTimeout = 5
 
-local function Delay(time, func)
-	table.insert(FuncQueue, { executeTime = GetTime() + time, func = func })
+local function QueueFunction(delay, func)
+	table.insert(FuncQueue, { executeTime = GetTime() + delay, func = func })
 end
 
 DelayFrame:SetScript("OnUpdate", function()
+	if DelayFrame.dbElapsed and Pulling then
+		DelayFrame.dbElapsed = DelayFrame.dbElapsed + arg1
+		if DelayFrame.dbElapsed >= DelayFrame.dbTimeout then
+			DelayFrame.dbElapsed = nil
+			Pulling = false
+			PullingFrom = nil
+			InitiatedDBSync = false
+			GotResponse = false
+			DBSyncInProgress = false
+			SmokeyLootFrameProgressBar:Hide()
+			if CurrentTab ~= "RAID" then
+				SmokeyLootPullButton:Show()
+			end
+			SmokeyLootPullButton:Enable()
+			SmokeyLoot.UpdateFrame()
+			printf("Database transfer aborted - timed out.")
+		end
+	end
 	if not FuncQueue[1] then return end
 	if GetTime() >= FuncQueue[1].executeTime then
 		FuncQueue[1].func()
@@ -814,6 +840,7 @@ function SmokeyLoot.RegisterTargetChange()
 end
 
 local lookup = {}
+local incomingDB = {}
 function SmokeyLoot.OnEvent(event, arg1, arg2, arg3, arg4)
 	if event == "ADDON_LOADED" then
 		if arg1 ~= "SmokeyLoot" then return end
@@ -854,7 +881,7 @@ function SmokeyLoot.OnEvent(event, arg1, arg2, arg3, arg4)
 				SMOKEYLOOT.GUILD[name].rankName = rank
 				SMOKEYLOOT.GUILD[name].rankIndex = rankIndex
 				SMOKEYLOOT.GUILD[name].class = strupper(class)
-				SMOKEYLOOT.GUILD[name].main = AltRanks[rank] and strtrim(strlower(officerNote)) ~= "guild bank" and strtrim(string.gsub(officerNote, "%..*", "")) or nil
+				SMOKEYLOOT.GUILD[name].main = AltRanks[rank] and strtrim(string.lower(officerNote)) ~= "guild bank" and strtrim(string.gsub(officerNote, "%..*", "")) or nil
 			end
 		end
 
@@ -917,7 +944,6 @@ function SmokeyLoot.OnEvent(event, arg1, arg2, arg3, arg4)
 			end
 
 			table.insert(SMOKEYLOOT.RAID, {
-				item = "",
 				bonus = 0,
 				itemID = 0,
 				char = joined,
@@ -976,7 +1002,6 @@ function SmokeyLoot.OnEvent(event, arg1, arg2, arg3, arg4)
 				end
 
 				table.insert(SMOKEYLOOT.RAID, {
-					item = "",
 					bonus = 0,
 					itemID = 0,
 					char = player,
@@ -1245,7 +1270,7 @@ function SmokeyLoot.OnEvent(event, arg1, arg2, arg3, arg4)
 					return
 				end
 
-				debugprint(message)
+				debugprintf("[%s] %s", sender, message)
 				SmokeyLootPopupFrameIconFrameIcon:SetTexture(texture)
 				SmokeyLootPopupFrameIconFrameCount:SetText(tonumber(count) > 1 and count or "")
 				SmokeyLootPopupFrameIconFrame.itemString = string.gsub(link, ".*|H(.-)|h.*", "%1", 1)
@@ -1279,6 +1304,7 @@ function SmokeyLoot.OnEvent(event, arg1, arg2, arg3, arg4)
 				SmokeyLootPopupFrame:SetScript("OnUpdate", LootPopupOnUpdate)
 
 			elseif string.find(message, "playsound;") then
+				debugprintf("[%s] %s", sender, message)
 				if SmokeyLootConfig.sounds then
 					local soundFile = string.gsub(message, "playsound;(.*);", "%1", 1)
 					PlaySoundFile("Interface\\AddOns\\SmokeyLoot\\Sounds\\"..soundFile..".mp3")
@@ -1286,13 +1312,13 @@ function SmokeyLoot.OnEvent(event, arg1, arg2, arg3, arg4)
 
 			elseif sender ~= UnitName("player") then
 				if message == "REPORT_ADDON_VERSION" then
-					debugprint(message, sender)
+					debugprintf("[%s] %s", sender, message)
 					SendAddonMessage("SmokeyLoot", "V_"..GetAddOnMetadata("SmokeyLoot", "Version"), "RAID")
 
 				elseif string.find(message, "^V_") then
 					local v = tonumber(string.sub(message, 3))
 					SmokeyAddonVersions[sender] = v or 0
-					debugprint(message, sender)
+					debugprintf("[%s] %s", sender, message)
 
 				elseif message == "GET_ML" then
 					-- share loot master name
@@ -1300,28 +1326,26 @@ function SmokeyLoot.OnEvent(event, arg1, arg2, arg3, arg4)
 					if name then
 						SendAddonMessage("SmokeyLoot", "ML_"..name, "RAID")
 					end
-					debugprint(message, sender)
+					debugprintf("[%s] %s", sender, message)
 
 				elseif string.find(message, "ML_", 1, true) then
 					local m = string.sub(message, 4)
 					for i = 1, GetNumRaidMembers() do
-						if m == GetRaidRosterInfo(i) then
-							Master = m
-							break
-						end
+						if m == GetRaidRosterInfo(i) then Master = m; break end
 					end
-					debugprint(message, sender, "master:", Master)
+					debugprintf("[%s] %s master: %s", sender, message, tostring(Master))
 					SmokeyLoot.EnableRaidControls()
 				end
 
 				if sender == SmokeyLoot.GetLootMasterName() then
 					if string.find(message, "tmogIgnored", 1, true) then
+						debugprintf("[%s] %s", sender, message)
 						SmokeyItem.tmogIgnored = string.sub(message, -1, -1) == "1" and true or false
 						SmokeyLoot.GetWinner()
 				
 					elseif string.find(message, "^EndRoll") then
 						-- ending roll, hide popup
-						debugprint(message, sender)
+						debugprintf("[%s] %s", sender, message)
 						if string.sub(message, -1, -1) == "0" then -- success
 							SmokeyLoot.PlayRollResultSound()
 						end
@@ -1333,26 +1357,25 @@ function SmokeyLoot.OnEvent(event, arg1, arg2, arg3, arg4)
 					elseif string.find(message, "R_start", 1, true) then
 						local usingPlus = string.sub(message, 9, 9)
 						local isBongoAlt = string.sub(message, 11, 11)
-						debugprint(message, "usingPlus:", usingPlus, "bongoAlt:", isBongoAlt)
+						debugprintf("[%s] %s", sender, message)
 						arraywipe(SMOKEYLOOT.RAID)
 						SMOKEYLOOT.RAID.isPlusOneRaid = usingPlus == "1"
 						SMOKEYLOOT.RAID.isBongoAltRaid = isBongoAlt == "1"
 
 					elseif message == "R_end" then
 						SmokeyLoot.UpdateFrame()
-						debugprint(message, sender)
+						debugprintf("[%s] %s", sender, message)
 
 					elseif message == "R_clear" then
-						debugprint(message, sender)
+						debugprintf("[%s] %s", sender, message)
 						arraywipe(SMOKEYLOOT.RAID)
 						SmokeyLoot.UpdateFrame()
 
 					else
-						local _, _, key, itemID, item, char, bonus, pluses, enabled, gotHR = string.find(message, "^(%d+);(%d+);(.*);(.*);(%-?%d+);(%d+);(%d);(.*)")
+						local _, _, key, itemID, char, bonus, pluses, enabled, gotHR = string.find(message, "^(%d+);(%d+);(.*);(%-?%d+);(%d+);(%d);(.*)")
 						if key then
 							table.insert(SMOKEYLOOT.RAID, tonumber(key), {
 								itemID = tonumber(itemID),
-								item = item,
 								char = char,
 								bonus = tonumber(bonus),
 								pluses = tonumber(pluses),
@@ -1365,33 +1388,43 @@ function SmokeyLoot.OnEvent(event, arg1, arg2, arg3, arg4)
 			end
 
 		elseif channel == "GUILD" and sender ~= UnitName("player") then
-			-- sync stuff here
-			if message == "GET_DB_LATEST" and IsOfficer() then
-				debugprint("DB requested by", sender)
+			-- DB sync stuff here
+			if message == "GET_DB_LATEST" and SmokeyLoot.IsOfficer() then
+				debugprintf("[%s] %s", sender, message)
 				SendAddonMessage("SmokeyLoot", "VDB_"..SMOKEYLOOT.DATABASE.date, "GUILD")
 				return
 			end
-			if string.find(message, "^VDB_%d+") then
+			if string.find(message, "^VDB_%d+") and SmokeyLoot.IsOfficer(sender) and InitiatedDBSync then
+				debugprintf("[%s] %s", sender, message)
+				GotResponse = true
 				local _, _, date = string.find(message, "^VDB_(%d+)")
-				if tonumber(date) > tonumber(SMOKEYLOOT.DATABASE.date) and IsOfficer(sender) then
+				local remote = SmokeyLoot.GetRemoteVersion()
+				if tonumber(date) == remote and SMOKEYLOOT.DATABASE.date < remote then
 					SendAddonMessage("SmokeyLoot", "PULL_FROM_"..sender, "GUILD")
+					PullingFrom = sender
 				end
 				return
 			end
-			if message == "PULL_FROM_"..UnitName("player") and IsOfficer() then
-				SmokeyLoot.Push(sender)
+			if message == "PULL_FROM_"..UnitName("player") and SmokeyLoot.IsOfficer() then
+				debugprintf("[%s] %s", sender, message)
+				SmokeyLoot.PushDB(sender)
 				return
 			end
-			if not Pusher and string.find(message, "^start;%d+;%d+") then
-				debugprint(message, sender)
+			if string.find(message, "^start;%d+;%d+") and SmokeyLoot.IsOfficer(sender) then
+				debugprintf("[%s] %s", sender, message)
+				DBSyncInProgress = true
 
 				local _, _, date, max = string.find(message, "start;(%d+);(%d+)")
-				if tonumber(date) > tonumber(SMOKEYLOOT.DATABASE.date) and IsOfficer(sender) then
-					arraywipe(SMOKEYLOOT.DATABASE)
-					arraywipe(SMOKEYLOOT.HR)
-					
-					Pusher = sender
-					SMOKEYLOOT.DATABASE.date = tonumber(date)
+				-- local remote = SmokeyLoot.GetRemoteVersion()
+
+				if not Pulling and tonumber(max) > 0 and (PullingFrom == sender or SMOKEYLOOT.DATABASE.date < tonumber(date)) then
+					arraywipe(incomingDB)
+					incomingDB.totalEntries = tonumber(max)
+					incomingDB.date = tonumber(date)
+
+					Pulling = true
+					PullingFrom = sender
+					DelayFrame.dbElapsed = 0
 
 					SmokeyLootFrameProgressBar:Show()
 					SmokeyLootFrameProgressBar:SetMinMaxValues(0, tonumber(max))
@@ -1399,15 +1432,18 @@ function SmokeyLoot.OnEvent(event, arg1, arg2, arg3, arg4)
 					SmokeyLootFrameProgressBarText:SetText("0%")
 					SmokeyLootFrameDBDate:SetText("Database version: updating...")
 					SmokeyLootPullButton:Hide()
-					printf("Updating database, provided by "..Pusher..", please, stay online until its done.")
+					printf("Updating database, provided by "..PullingFrom..", please, stay online until it's done.")
 				end
 
-			elseif sender and sender == Pusher then
-				if string.find(message, "^end;%d+") then
-					debugprint(message, sender)
-
-					Pusher = nil
+			elseif string.find(message, "^end;%d+") and SmokeyLoot.IsOfficer(sender) then
+				debugprintf("[%s] %s", sender, message)
+				DBSyncInProgress = false
+				if PullingFrom and PullingFrom == sender then
 					Pulling = false
+					PullingFrom = nil
+					InitiatedDBSync = false
+					GotResponse = false
+					DelayFrame.dbElapsed = nil
 
 					SmokeyLootFrameProgressBar:Hide()
 					if CurrentTab ~= "RAID" then
@@ -1415,39 +1451,57 @@ function SmokeyLoot.OnEvent(event, arg1, arg2, arg3, arg4)
 					end
 					SmokeyLootPullButton:Enable()
 
-					if PushAfter then
-						PushAfter = false
-						SmokeyLoot.FinishRaidRoutine()
-						SmokeyLoot.Push()
+					local newSize = table.getn(incomingDB)
+					local targetSize = incomingDB.totalEntries
+					if newSize ~= incomingDB.totalEntries then
+						printf("Database transfer aborted - recieved %d entries but needed %d.", newSize, targetSize)
+						return
 					end
 
+					arraywipe(SMOKEYLOOT.DATABASE)
+					for i = 1, newSize do
+						local value = incomingDB[i]
+						table.insert(SMOKEYLOOT.DATABASE, i, {
+							itemID = value.itemID,
+							char = value.char,
+							bonus = value.bonus,
+						})
+					end
+					SMOKEYLOOT.DATABASE.date = incomingDB.date
 					SmokeyLoot.UpdateHR()
 					SmokeyLoot.UpdateFrame()
 					printf("Database is updated.")
-				else
-					local _, _, index, itemID, itemName = string.find(message, "(%d+)=(%d+)=(.+)=")
+
+				end
+				if PushAfterDBSync then
+					PushAfterDBSync = false
+					SmokeyLoot.FinishRaidRoutine()
+				end
+			elseif string.find(message, "(%d+)=(%d+)=") and SmokeyLoot.IsOfficer(sender) then
+				DBSyncInProgress = true
+				local _, _, index, itemID = string.find(message, "(%d+)=(%d+)=")
+				if PullingFrom and PullingFrom == sender then
 					index, itemID = tonumber(index), tonumber(itemID)
 
-					if index and itemID and itemName then
-						message = string.gsub(message, "%d+=%d+=.+=", "")
+					if index and itemID then
+						DelayFrame.dbElapsed = 0
+						message = string.gsub(message, "%d+=%d+=", "")
 
 						local info = strsplit(message, ";")
 
 						for i = 1, table.getn(info), 2 do
 							if info[i] and tonumber(info[i + 1]) then
-								table.insert(SMOKEYLOOT.DATABASE, {
+								table.insert(incomingDB, {
 									itemID = itemID,
-									item = itemName,
 									char = info[i],
 									bonus = tonumber(info[i + 1]),
 								})
+								local n = table.getn(incomingDB)
+								local min, max = SmokeyLootFrameProgressBar:GetMinMaxValues()
+								SmokeyLootFrameProgressBar:SetValue(n)
+								SmokeyLootFrameProgressBarText:SetText(string.format("%.0f%%", n / max * 100))
 							end
 						end
-
-						local min, max = SmokeyLootFrameProgressBar:GetMinMaxValues()
-
-						SmokeyLootFrameProgressBar:SetValue(index)
-						SmokeyLootFrameProgressBarText:SetText(string.format("%.0f%%", index / max * 100))
 					end
 				end
 			end
@@ -1500,16 +1554,16 @@ function SmokeyLoot.UpdateFrame()
 	if query ~= "" then
 		if SmokeyLootFrameSearchBoxExact:GetChecked() then
 			for i = 1, table.getn(tableToUpdate) do
-				local item = tableToUpdate[i].item or ""
+				local itemName = GetItemInfo(tableToUpdate[i].itemID or 0) or ""
 				local char = tableToUpdate[i].char or ""
-				if char == query or item == query then table.insert(SearchResult, i) end
+				if char == query or itemName == query then table.insert(SearchResult, i) end
 			end
 		else
-			query = strlower(query)
+			query = string.lower(query)
 			for i = 1, table.getn(tableToUpdate) do
-				local item = tableToUpdate[i].item or ""
+				local itemName = GetItemInfo(tableToUpdate[i].itemID or 0) or ""
 				local char = tableToUpdate[i].char or ""
-				if string.find(strlower(item), query, 1, true) or string.find(strlower(char), query, 1, true) then table.insert(SearchResult, i) end
+				if string.find(string.lower(itemName), query, 1, true) or string.find(string.lower(char), query, 1, true) then table.insert(SearchResult, i) end
 			end
 		end
 	end
@@ -1550,7 +1604,6 @@ function SmokeyLoot.UpdateFrame()
 			local rankColumn = _G["SmokeyLootEntry"..i.."Column2"]
 			local bonusColumn = _G["SmokeyLootEntry"..i.."Column3"]
 			local itemID = tableToUpdate[entryIndex].itemID
-			local item = tableToUpdate[entryIndex].item
 			local char = tableToUpdate[entryIndex].char
 			local bonus = tableToUpdate[entryIndex].bonus
 			local class = SMOKEYLOOT.GUILD[char] and SMOKEYLOOT.GUILD[char].class
@@ -1565,7 +1618,7 @@ function SmokeyLoot.UpdateFrame()
 				r, g, b = GetItemQualityColor(itemQuality)
 			end
 
-			itemColumn:SetText(itemName or item or "")
+			itemColumn:SetText(itemName or "")
 			itemColumn:SetTextColor(r, g, b)
 			itemColumn:SetWidth(char and 200 or 0)
 			charColumn:SetText(char)
@@ -1717,20 +1770,36 @@ function SmokeyLoot.Entry_OnLeave()
 	EntryTooltip:Hide()
 end
 
+function SmokeyLoot.ChatInsertItemLink(itemID)
+	local editBox
+	if WIM_EditBoxInFocus then
+		editBox = WIM_EditBoxInFocus
+	elseif MessageBox and MessageBox.whisperInput and MessageBox.whisperInput:IsVisible() then
+		editBox = MessageBox.whisperInput
+	elseif ChatFrameEditBox:IsVisible() then
+		editBox = ChatFrameEditBox
+	end
+	local itemName, itemString, quality = GetItemInfo(itemID or 0)
+	if itemName and editBox then
+		local r, g, b, color = GetItemQualityColor(quality)
+		editBox:Insert(string.format("%s|H%s|h[%s]|h|r", color, itemString, itemName))
+	end
+end
+
 function SmokeyLoot.Entry_OnClick()
 	if IsShiftKeyDown() then
-		if not (this.data and SmokeyLootEditEntryFrame:IsShown()) then
-			return
-		end
+		if not this.data then return end
 		-- copy paste values
-		if this.data.item then
-			SmokeyLootEditEntryFrameEditBox1:SetText(this.data.item)
+		if SmokeyLootEditEntryFrame:IsShown() then
+			if this.data.itemID then
+				SmokeyLootEditEntryFrameEditBox2:SetNumber(this.data.itemID)
+				SmokeyLootEditEntryFrameItemName:SetText(GetItemInfo(this.data.itemID) or "")
+			end
+			SmokeyLootEditEntryFrameEditBox3:SetText(this.data.char)
+			SmokeyLootEditEntryFrameEditBox4:SetText(this.data.bonus)
+		else
+			SmokeyLoot.ChatInsertItemLink(this.data.itemID)
 		end
-		if this.data.itemID then
-			SmokeyLootEditEntryFrameEditBox2:SetNumber(this.data.itemID)
-		end
-		SmokeyLootEditEntryFrameEditBox3:SetText(this.data.char)
-		SmokeyLootEditEntryFrameEditBox4:SetText(this.data.bonus)
 	elseif CurrentTab == "DATABASE" or CurrentTab == "RAID" then
 		SmokeyLoot.ToggleEditEntryFrame(this:GetID())
 	end
@@ -1738,9 +1807,7 @@ end
 
 function SmokeyLoot.GetBonus(itemID, char)
 	for k, v in ipairs(SMOKEYLOOT.DATABASE) do
-		if v.itemID == tonumber(itemID) and v.char == char then
-			return v.bonus or 0
-		end
+		if v.itemID == tonumber(itemID) and v.char == char then return v.bonus or 0 end
 	end
 	return nil
 end
@@ -1764,7 +1831,7 @@ ChatFrame_OnHyperlinkShow = function(link, text, button)
 		_, _, itemName = string.find(text, "%[(.-)%]")
 	end
 	if itemName and itemID then
-		SmokeyLootEditEntryFrameEditBox1:SetText(strtrim(itemName))
+		SmokeyLootEditEntryFrameItemName:SetText(strtrim(itemName))
 		SmokeyLootEditEntryFrameEditBox2:SetNumber(itemID)
 	elseif name and strlen(name) > 0 then
 		SmokeyLootEditEntryFrameEditBox3:SetText(name)
@@ -2055,6 +2122,7 @@ end
 function SmokeyLoot.MLFrameOnShow()
 	if CurrentLootSource == "chest" or SmokeyLoot.NonTradeableBosses[UnitName("target")] then
 		SmokeyLootMLFrameIgnoreTmog:SetChecked(true)
+		debugprint("Non-tradeable loot")
 	end
 end
 
@@ -2157,8 +2225,8 @@ end
 
 function SmokeyLoot.Import()
 	local text = strtrim(SmokeyImportText:GetText())
-	text = string.gsub(text, ',"', ",")
-	text = string.gsub(text, '",', ",")
+	-- text = string.gsub(text, ',"', ",")
+	-- text = string.gsub(text, '",', ",")
 
 	local split = strsplit(text, "\n")
 
@@ -2166,7 +2234,7 @@ function SmokeyLoot.Import()
 	SMOKEYLOOT.RAID.isBongoAltRaid = SmokeyLootImportFrameEnableBongoAltRule:GetChecked() and true or false
 
 	for i = 1, table.getn(split) do
-		local _, _, id, itemName, char = string.find(split[i], "^(%d+),(.+),(.+)$")
+		local _, _, id, char = string.find(split[i], "^(%d+),(.+)$")
 		if id then
 			-- get players bonus on this item
 			local bonus = 0
@@ -2180,19 +2248,15 @@ function SmokeyLoot.Import()
 			local enabled = false
 			for j = 1, 40 do
 				local name, rank, subgroup, level, class, fileName, zone, online, isDead = GetRaidRosterInfo(j)
-				if name and name == char then
-					enabled = true
-					break
-				end
+				if name and name == char then enabled = true; break end
 			end
 			local index = arrcontains(SMOKEYLOOT.RAID, char)
 			if index then
 				-- if player found in the list, just refresh item
 				SMOKEYLOOT.RAID[index].itemID = tonumber(id)
-				SMOKEYLOOT.RAID[index].item = itemName
 				SMOKEYLOOT.RAID[index].bonus = bonus
 			else
-				table.insert(SMOKEYLOOT.RAID, { char = char, itemID = tonumber(id), item = itemName, bonus = bonus, pluses = 0, enabled = enabled })
+				table.insert(SMOKEYLOOT.RAID, { char = char, itemID = tonumber(id), bonus = bonus, pluses = 0, enabled = enabled })
 			end
 		end
 	end
@@ -2201,7 +2265,7 @@ function SmokeyLoot.Import()
 	for i = 1, 40 do
 		local name, rank, subgroup, level, class, fileName, zone, online, isDead = GetRaidRosterInfo(i)
 		if name and not arrcontains(SMOKEYLOOT.RAID, name) then
-			table.insert(SMOKEYLOOT.RAID, { char = name, itemID = 0, item = "", bonus = 0, pluses = 0, enabled = true })
+			table.insert(SMOKEYLOOT.RAID, { char = name, itemID = 0, bonus = 0, pluses = 0, enabled = true })
 		end
 	end
 
@@ -2213,17 +2277,6 @@ function SmokeyLoot.Import()
 	SmokeyLoot.EnableRaidControls()
 	SmokeyLoot.PushRaid()
 	SmokeyLoot.RegisterTargetChange()
-end
-
-function SmokeyLoot.Export()
-	if not ExportFile then
-		return
-	end
-	local output = ""
-	for k, v in ipairs(SMOKEYLOOT.DATABASE) do
-		output = output..v.itemID.."\t"..v.item.."\t"..v.char.."\t"..v.bonus.."\n"
-	end
-	ExportFile("sl_database_"..date("%d.%m.%y_%H.%M.%S", SMOKEYLOOT.DATABASE.date), output)
 end
 
 function SmokeyLoot.SwitchTab(switchTo)
@@ -2245,7 +2298,7 @@ function SmokeyLoot.SwitchTab(switchTo)
 		SmokeyLootClearButton:Hide()
 		SmokeyLootAddButton:Show()
 
-		if IsOfficer() and table.getn(SMOKEYLOOT.RAID) == 0 then
+		if SmokeyLoot.IsOfficer() and table.getn(SMOKEYLOOT.RAID) == 0 then
 			SmokeyLootAddButton:Enable()
 		else
 			SmokeyLootAddButton:Disable()
@@ -2271,6 +2324,10 @@ function SmokeyLoot.SwitchTab(switchTo)
 end
 
 function SmokeyLoot.FinishRaidRoutine()
+	if SMOKEYLOOT.DATABASE.date < SmokeyLoot.GetRemoteVersion() or DBSyncInProgress then
+		return
+	end
+	printf("Finishing raid.")
 	for i = table.getn(SMOKEYLOOT.RAID), 1, -1 do
 		local id = SMOKEYLOOT.RAID[i].itemID
 		local bonus = SMOKEYLOOT.RAID[i].bonus
@@ -2300,7 +2357,7 @@ function SmokeyLoot.FinishRaidRoutine()
 				end
 			end
 		end
-		-- remove if had nothing reserved or mount or reserved when already hr, or disabled
+		-- remove if had nothing reserved or reserved something from Blacklist or when already hr or disabled
 		if enabled == false or id == 0 or BlacklistItems[id] or bonus > 90 then
 			table.remove(SMOKEYLOOT.RAID, i)
 		elseif bonus == -1 then -- check if got their sr
@@ -2317,7 +2374,8 @@ function SmokeyLoot.FinishRaidRoutine()
 	end
 
 	-- RAID now should only contain people who need to get +10 bonus (or get on HR list)
-	printf("Following players got +10:")
+	local size = table.getn(SMOKEYLOOT.RAID)
+	if size > 0 then printf("Following players got +10:") end
 
 	for k, v in ipairs(SMOKEYLOOT.RAID) do
 		local newBonus = v.bonus + 10
@@ -2351,10 +2409,10 @@ function SmokeyLoot.FinishRaidRoutine()
 				end
 			end
 		else
-			-- this is regular new entry
-			if newBonus == 10 then
-				table.insert(SMOKEYLOOT.DATABASE, { char = v.char, itemID = v.itemID, bonus = newBonus, item = v.item })
-			elseif newBonus > 10 then
+			if not SmokeyLoot.GetBonus(v.itemID, v.char) then
+				-- this is new regular entry
+				table.insert(SMOKEYLOOT.DATABASE, { char = v.char, itemID = v.itemID, bonus = newBonus })
+			else
 				-- this is old regular entry
 				for k2, v2 in ipairs(SMOKEYLOOT.DATABASE) do
 					if v2.char == v.char and v2.itemID == v.itemID then
@@ -2365,66 +2423,73 @@ function SmokeyLoot.FinishRaidRoutine()
 			end
 		end
 
-		printf("%s %d %s %d -> %d", v.item, v.itemID, v.char, v.bonus, newBonus)
+		printf("%s %s %d -> %d", GetItemInfo(v.itemID) or "<?>", v.char, v.bonus, newBonus)
 	end
 
 	arraywipe(SMOKEYLOOT.RAID)
 	listwipe(SMOKEYLOOT.RAID)
 
 	SmokeyLoot.PushRaid(true)
-	SmokeyLoot.SetRemoteVersion()
+	if size > 0 then
+		-- QueueFunction(2, function()
+			SmokeyLoot.SetRemoteVersion()
+			SmokeyLoot.PushDB()
+			printf("New date has been set: %s", date("%d/%m/%y %H:%M:%S", SMOKEYLOOT.DATABASE.date))
+		-- end)
+	end
 	SmokeyLoot.UpdateHR()
 	SmokeyLoot.UpdateFrame()
-
-	printf("New date "..date("%d/%m/%y %H:%M:%S", SMOKEYLOOT.DATABASE.date))
 end
 
 function SmokeyLoot.FinishRaidButton_OnClick()
-	printf("Finishing raid.")
+	if not IsMasterLooter() then return end
+
 	SmokeyLootFinishRaidButton:Disable()
-	SmokeyLoot.Pull()
 
-	PushAfter = true
-
-	Delay(1, function()
-		if SmokeyLoot.GetRemoteVersion() <= SMOKEYLOOT.DATABASE.date and IsMasterLooter() then
-			PushAfter = false
-			SmokeyLoot.FinishRaidRoutine()
-			SmokeyLoot.Push()
-		end
-	end)
+	if SMOKEYLOOT.DATABASE.date < SmokeyLoot.GetRemoteVersion() or DBSyncInProgress then
+		SmokeyLoot.PullDB()
+		PushAfterDBSync = true
+	else
+		SmokeyLoot.FinishRaidRoutine()
+	end
 end
 
-function SmokeyLoot.Pull()
+function SmokeyLoot.PullDB()
 	GuildRoster()
 
-	if Pulling then
-		return
-	end
+	if Pulling or Pushing or InitiatedDBSync then return end
 
 	if SMOKEYLOOT.DATABASE.date < SmokeyLoot.GetRemoteVersion() then
-		Pulling = true
+		InitiatedDBSync = true
+		GotResponse = false
+		PullingFrom = nil
 		SmokeyLootPullButton:Disable()
-		debugprint("Requesting database")
+		printf("Requesting database...")
 		SendAddonMessage("SmokeyLoot", "GET_DB_LATEST", "GUILD")
 	end
 
-	Delay(5, function()
+	QueueFunction(3, function()
 		if SMOKEYLOOT.DATABASE.date < SmokeyLoot.GetRemoteVersion() then
-			Pulling = false
+			InitiatedDBSync = false
+			GotResponse = false
+			PullingFrom = nil
 			SmokeyLootPullButton:Enable()
-			printf("Looks like there is no one online who can share the latest database.")
+			if not GotResponse then
+				printf("Looks like there is no one online who can share the database. :(")
+			else
+				printf("Looks like officers that are online have outdated database. So useless!")
+			end
 		end
 	end)
 end
 
-function SmokeyLoot.Push(requestedBy)
-	if not IsOfficer() or Pushing or Pusher or SMOKEYLOOT.DATABASE.date < SmokeyLoot.GetRemoteVersion() then
+function SmokeyLoot.PushDB(requestedBy)
+	if not SmokeyLoot.IsOfficer() or Pushing or Pulling or DBSyncInProgress or SMOKEYLOOT.DATABASE.date < SmokeyLoot.GetRemoteVersion() then
 		return
 	end
 
 	local items = {}
-	local messages = {}
+	local uniqueItems = {}
 
 	table.sort(SMOKEYLOOT.DATABASE, sortfunc)
 
@@ -2432,18 +2497,17 @@ function SmokeyLoot.Push(requestedBy)
 		if type(v) == "table" then
 			if not items[v.itemID] then
 				items[v.itemID] = true
-				table.insert(messages, v.itemID.."="..v.item.."=")
+				table.insert(uniqueItems, v.itemID.."=")
 			end
-			messages[table.getn(messages)] = messages[table.getn(messages)]..v.char..";"..v.bonus..";"
+			uniqueItems[table.getn(uniqueItems)] = uniqueItems[table.getn(uniqueItems)]..v.char..";"..v.bonus..";"
 		end
 	end
 
-	if table.getn(messages) == 0 then return end
+	if table.getn(uniqueItems) == 0 then return end
 
-	SendAddonMessage("SmokeyLoot", "start;"..SMOKEYLOOT.DATABASE.date..";"..table.getn(messages), "GUILD")
+	SendAddonMessage("SmokeyLoot", "start;"..SMOKEYLOOT.DATABASE.date..";"..table.getn(SMOKEYLOOT.DATABASE), "GUILD")
 	Pushing = true
 
-	debugprint("Pushing database")
 	if requestedBy then
 		printf("Sharing database, requested by "..requestedBy..", please, stay online until it's done.")
 	end
@@ -2451,16 +2515,15 @@ function SmokeyLoot.Push(requestedBy)
 	local i = 1
 	local dbPushFrame = SmokeyLootDBPushFrame or CreateFrame("Frame", "SmokeyLootDBPushFrame")
 	dbPushFrame:SetScript("OnUpdate", function()
-		if messages[i] then
-			SendAddonMessage("SmokeyLoot", i.."="..messages[i], "GUILD")
+		if uniqueItems[i] then
+			SendAddonMessage("SmokeyLoot", i.."="..uniqueItems[i], "GUILD")
 		end
 		i = i + 1
 
-		if i > table.getn(messages) then
+		if i > table.getn(uniqueItems) then
 			dbPushFrame:SetScript("OnUpdate", nil)
 			SendAddonMessage("SmokeyLoot", "end;"..SMOKEYLOOT.DATABASE.date, "GUILD")
 			Pushing = false
-			debugprint("Database push finished")
 			printf("Database is shared.")
 		end
 	end)
@@ -2482,7 +2545,7 @@ function SmokeyLoot.PushRaid(clear)
 
 	for i, v in ipairs(SMOKEYLOOT.RAID) do
 		if type(v) == "table" then
-			table.insert(messages, string.format("%d;%d;%s;%s;%d;%d;%d;%s", i, v.itemID, v.item, v.char, v.bonus, v.pluses, v.enabled and "1" or "0", v.gotHR and table.concat(v.gotHR, ",") or ""))
+			table.insert(messages, string.format("%d;%d;%s;%d;%d;%d;%s", i, v.itemID, v.char, v.bonus, v.pluses, v.enabled and "1" or "0", v.gotHR and table.concat(v.gotHR, ",") or ""))
 		end
 	end
 
@@ -2505,7 +2568,7 @@ function SmokeyLoot.PushRaid(clear)
 end
 
 function SmokeyLoot.CheckDBSanity()
-	if not IsOfficer() then
+	if not SmokeyLoot.IsOfficer() then
 		return
 	end
 
@@ -2518,7 +2581,7 @@ function SmokeyLoot.CheckDBSanity()
 
 	for k, v in ipairs(SMOKEYLOOT.DATABASE) do
 		if not SMOKEYLOOT.GUILD[v.char] then
-			printf("Non guild member entry: %s %s itemID: %d bonus: %d", v.char, v.item, v.itemID, v.bonus)
+			printf("Non guild member entry: %s itemID: %d bonus: %d", v.char, v.itemID, v.bonus)
 			nonmembers = nonmembers + 1
 		end
 	end
@@ -2532,7 +2595,7 @@ function SmokeyLoot.CheckDBSanity()
 		end
 	end
 	for k, v in ipairs(dup) do
-		printf("duplicated entry %d %s %s",v.itemID, v.item, v.char)
+		printf("duplicated entry %d %s",v.itemID, v.char)
 	end
 	duplicates = table.getn(dup)
 
@@ -2548,7 +2611,7 @@ function SmokeyLoot.GetRemoteVersion()
 end
 
 function SmokeyLoot.SetRemoteVersion()
-	if not IsOfficer() then
+	if not SmokeyLoot.IsOfficer() then
 		return
 	end
 
@@ -2583,7 +2646,7 @@ function SmokeyLoot.UpdateHR()
 			local hrIndex = arrcontains(SMOKEYLOOT.HR, v.itemID)
 
 			if not hrIndex then
-				table.insert(SMOKEYLOOT.HR, { item = v.item, itemID = v.itemID })
+				table.insert(SMOKEYLOOT.HR, { itemID = v.itemID })
 				hrIndex = table.getn(SMOKEYLOOT.HR)
 			end
 
@@ -2612,7 +2675,7 @@ function SmokeyLoot.ToggleEditEntryFrame(id, add)
 		return
 	end
 
-	local isOfficer = IsOfficer()
+	local isOfficer = SmokeyLoot.IsOfficer()
 	local isMaster = IsMasterLooter()
 
 	if SMOKEYLOOT.DATABASE.date < SmokeyLoot.GetRemoteVersion() then
@@ -2631,7 +2694,7 @@ function SmokeyLoot.ToggleEditEntryFrame(id, add)
 			return
 		end
 		SmokeyLootEditEntryFrameEntryIndex:SetText("Database Entry " .. id)
-		SmokeyLootEditEntryFrameEditBox1:SetText(add and "" or SMOKEYLOOT.DATABASE[id].item)
+		SmokeyLootEditEntryFrameItemName:SetText(add and "" or GetItemInfo(SMOKEYLOOT.DATABASE[id].itemID))
 		SmokeyLootEditEntryFrameEditBox2:SetNumber(add and 0 or SMOKEYLOOT.DATABASE[id].itemID)
 		SmokeyLootEditEntryFrameEditBox3:SetText(add and "" or SMOKEYLOOT.DATABASE[id].char)
 		SmokeyLootEditEntryFrameEditBox4:SetText(add and 0 or SMOKEYLOOT.DATABASE[id].bonus)
@@ -2647,7 +2710,7 @@ function SmokeyLoot.ToggleEditEntryFrame(id, add)
 			return
 		end
 		SmokeyLootEditEntryFrameEntryIndex:SetText("Raid Entry # " .. id)
-		SmokeyLootEditEntryFrameEditBox1:SetText(add and "" or SMOKEYLOOT.RAID[id].item)
+		SmokeyLootEditEntryFrameItemName:SetText(add and "" or GetItemInfo(SMOKEYLOOT.RAID[id].itemID))
 		SmokeyLootEditEntryFrameEditBox2:SetNumber(add and 0 or SMOKEYLOOT.RAID[id].itemID)
 		SmokeyLootEditEntryFrameEditBox3:SetText(add and "" or SMOKEYLOOT.RAID[id].char)
 		SmokeyLootEditEntryFrameEditBox4:SetText(add and 0 or SMOKEYLOOT.RAID[id].bonus)
@@ -2683,7 +2746,7 @@ function SmokeyLoot.EditEntryFrame_OnHide()
 end
 
 function SmokeyLoot.EditEntryFrameAcceptButton_OnClick()
-	local isOfficer = IsOfficer()
+	local isOfficer = SmokeyLoot.IsOfficer()
 	local isMaster = IsMasterLooter()
 	if SMOKEYLOOT.DATABASE.date < SmokeyLoot.GetRemoteVersion() then
 		if isOfficer or isMaster then printf("You need to get latest database first.") end
@@ -2691,7 +2754,6 @@ function SmokeyLoot.EditEntryFrameAcceptButton_OnClick()
 	end
 	local tab = SmokeyLootEditEntryFrame.tab
 	local id = SmokeyLootEditEntryFrame.id
-	local newItem = strtrim(SmokeyLootEditEntryFrameEditBox1:GetText())
 	local newItemID = SmokeyLootEditEntryFrameEditBox2:GetNumber()
 	local newChar = strtrim(SmokeyLootEditEntryFrameEditBox3:GetText())
 	local newBonus = tonumber(strtrim(SmokeyLootEditEntryFrameEditBox4:GetText()))
@@ -2712,7 +2774,6 @@ function SmokeyLoot.EditEntryFrameAcceptButton_OnClick()
 			table.insert(SMOKEYLOOT.DATABASE, id, {})
 		end
 
-		SMOKEYLOOT.DATABASE[id].item = newItem
 		SMOKEYLOOT.DATABASE[id].itemID = newItemID
 		SMOKEYLOOT.DATABASE[id].char = newChar
 		SMOKEYLOOT.DATABASE[id].bonus = newBonus
@@ -2742,17 +2803,19 @@ function SmokeyLoot.EditEntryFrameAcceptButton_OnClick()
 			-- check if this item char combo exists in database, add pluses if it does
 			for k, v in ipairs(SMOKEYLOOT.DATABASE) do
 				if v.itemID == newItemID and v.char == newChar then
-					-- use item name from database
-					SMOKEYLOOT.RAID[id].item = v.item
 					SMOKEYLOOT.RAID[id].bonus = v.bonus
 					break
 				end
 			end
 
-			SMOKEYLOOT.RAID[id].item = SMOKEYLOOT.RAID[id].item or newItem
 			SMOKEYLOOT.RAID[id].bonus = SMOKEYLOOT.RAID[id].bonus or newBonus
 		else
-			SMOKEYLOOT.RAID[id].item = newItem
+			for k, v in ipairs(SMOKEYLOOT.RAID) do
+				if v.char == newChar and k ~= id then
+					printf("%s entry already exists.", newChar)
+					return
+				end
+			end
 			SMOKEYLOOT.RAID[id].bonus = newBonus
 		end
 
@@ -2768,7 +2831,7 @@ function SmokeyLoot.EditEntryFrameAcceptButton_OnClick()
 end
 
 function SmokeyLoot.EditEntryFrameDeleteButton_OnClick()
-	if CurrentTab == "DATABASE" and IsOfficer() then
+	if CurrentTab == "DATABASE" and SmokeyLoot.IsOfficer() then
 		if SMOKEYLOOT.DATABASE.date < SmokeyLoot.GetRemoteVersion() then
 			printf("You need to get latest database first.")
 			return
@@ -2815,7 +2878,7 @@ function SmokeyLoot.AddButton_OnClick()
 end
 
 function SmokeyLoot.AddButton_OnShow()
-	if (CurrentTab == "DATABASE" and not IsOfficer()) or (CurrentTab == "RAID" and not IsMasterLooter()) then
+	if (CurrentTab == "DATABASE" and not SmokeyLoot.IsOfficer()) or (CurrentTab == "RAID" and not IsMasterLooter()) then
 		SmokeyLootAddButton:Disable()
 		return
 	end
@@ -2918,7 +2981,7 @@ SlashCmdList.SMOKEYLOOT = function(cmd)
 
 		SendAddonMessage("SmokeyLoot", "REPORT_ADDON_VERSION", "RAID")
 
-		Delay(3, function()
+		QueueFunction(3, function()
 			local outdated = ""
 			local noAddon = ""
 			local same = ""

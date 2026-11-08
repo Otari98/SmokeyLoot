@@ -271,7 +271,7 @@
 				</Anchors>
 				<Scripts>
 					<OnClick>
-						SmokeyLoot.Pull()
+						SmokeyLoot.PullDB()
 					</OnClick>
 				</Scripts>
 			</Button>
@@ -364,56 +364,56 @@
 						</Texture>
 					</Layer>
 					<Layer level="OVERLAY">
-						<FontString name="$parentEntryIndex" inherits="GameFontNormal" justifyH="CENTER" text="Database Entry">
+						<FontString name="SmokeyLootEditEntryFrameEntryIndex" inherits="GameFontNormal" justifyH="CENTER" text="Database Entry">
 							<Anchors>
 								<Anchor point="TOP">
 									<Offset x="0" y="-4"/>
 								</Anchor>
 							</Anchors>
 						</FontString>
-						<FontString name="$parentItemName" inherits="GameFontNormal" justifyH="LEFT" text="Item:">
+						<FontString name="SmokeyLootEditEntryFrameItemName" inherits="GameFontNormal" justifyH="CENTER">
+							<Anchors>
+								<Anchor point="TOP">
+									<Offset x="0" y="-36"/>
+								</Anchor>
+							</Anchors>
+						</FontString>
+						<FontString name="SmokeyLootEditEntryFrameItemID" inherits="GameFontNormal" justifyH="LEFT" text="ItemID:">
 							<Anchors>
 								<Anchor point="TOPLEFT">
-									<Offset x="14" y="-36"/>
+									<Offset x="14" y="-64"/>
 								</Anchor>
 							</Anchors>
 						</FontString>
-						<FontString name="$parentItemID" inherits="GameFontNormal" justifyH="LEFT" text="ItemID:">
+						<FontString name="SmokeyLootEditEntryFrameCharacter" inherits="GameFontNormal" justifyH="LEFT" text="Character:">
 							<Anchors>
-								<Anchor point="TOPLEFT" relativeTo="$parentItemName" relativePoint="BOTTOMLEFT">
+								<Anchor point="TOPLEFT" relativeTo="SmokeyLootEditEntryFrameItemID" relativePoint="BOTTOMLEFT">
 									<Offset x="0" y="-17"/>
 								</Anchor>
 							</Anchors>
 						</FontString>
-						<FontString name="$parentCharacter" inherits="GameFontNormal" justifyH="LEFT" text="Character:">
+						<FontString name="SmokeyLootEditEntryFrameBonus" inherits="GameFontNormal" justifyH="LEFT" text="Bonus:">
 							<Anchors>
-								<Anchor point="TOPLEFT" relativeTo="$parentItemID" relativePoint="BOTTOMLEFT">
+								<Anchor point="TOPLEFT" relativeTo="SmokeyLootEditEntryFrameCharacter" relativePoint="BOTTOMLEFT">
 									<Offset x="0" y="-17"/>
 								</Anchor>
 							</Anchors>
 						</FontString>
-						<FontString name="$parentBonus" inherits="GameFontNormal" justifyH="LEFT" text="Bonus:">
+						<FontString name="SmokeyLootEditEntryFramePluses" inherits="GameFontNormal" justifyH="LEFT" text="Pluses:">
 							<Anchors>
-								<Anchor point="TOPLEFT" relativeTo="$parentCharacter" relativePoint="BOTTOMLEFT">
+								<Anchor point="TOPLEFT" relativeTo="SmokeyLootEditEntryFrameBonus" relativePoint="BOTTOMLEFT">
 									<Offset x="0" y="-17"/>
 								</Anchor>
 							</Anchors>
 						</FontString>
-						<FontString name="$parentPluses" inherits="GameFontNormal" justifyH="LEFT" text="Pluses:">
+						<FontString name="SmokeyLootEditEntryFrameEnabled" inherits="GameFontNormal" justifyH="LEFT" text="Enabled:">
 							<Anchors>
-								<Anchor point="TOPLEFT" relativeTo="$parentBonus" relativePoint="BOTTOMLEFT">
+								<Anchor point="TOPLEFT" relativeTo="SmokeyLootEditEntryFramePluses" relativePoint="BOTTOMLEFT">
 									<Offset x="0" y="-17"/>
 								</Anchor>
 							</Anchors>
 						</FontString>
-						<FontString name="$parentEnabled" inherits="GameFontNormal" justifyH="LEFT" text="Enabled:">
-							<Anchors>
-								<Anchor point="TOPLEFT" relativeTo="$parentPluses" relativePoint="BOTTOMLEFT">
-									<Offset x="0" y="-17"/>
-								</Anchor>
-							</Anchors>
-						</FontString>
-						<FontString name="$parentHint" inherits="GameFontNormalSmall" justifyH="CENTER">
+						<FontString name="SmokeyLootEditEntryFrameHint" inherits="GameFontNormalSmall" justifyH="CENTER">
 							<Size x="256" y="64"/>
 							<Anchors>
 								<Anchor point="BOTTOM">
@@ -424,51 +424,51 @@
 					</Layer>
 				</Layers>
 				<Frames>
-					<Button name="$parentCloseButton" inherits="UIPanelCloseButton">
+					<Button name="SmokeyLootEditEntryFrameCloseButton" inherits="UIPanelCloseButton">
 						<Anchors>
 							<Anchor point="TOPRIGHT">
 								<Offset x="-5" y="-5"/>
 							</Anchor>
 						</Anchors>
 					</Button>
-					<EditBox name="$parentEditBox1" inherits="SmokeyLootEditBoxTemplate" id="1">
+					<EditBox name="SmokeyLootEditEntryFrameEditBox1" inherits="SmokeyLootEditBoxTemplate" id="1" hidden="true">
 						<Anchors>
 							<Anchor point="TOPRIGHT">
 								<Offset x="-14" y="-34"/>
 							</Anchor>
 						</Anchors>
 					</EditBox>
-					<EditBox name="$parentEditBox2" inherits="SmokeyLootEditBoxTemplate" id="2" numeric="true">
+					<EditBox name="SmokeyLootEditEntryFrameEditBox2" inherits="SmokeyLootEditBoxTemplate" id="2" numeric="true">
 						<Anchors>
 							<Anchor point="TOP" relativeTo="$parentEditBox1" relativePoint="BOTTOM">
 								<Offset x="0" y="-5"/>
 							</Anchor>
 						</Anchors>
 					</EditBox>
-					<EditBox name="$parentEditBox3" inherits="SmokeyLootEditBoxTemplate" id="3">
+					<EditBox name="SmokeyLootEditEntryFrameEditBox3" inherits="SmokeyLootEditBoxTemplate" id="3">
 						<Anchors>
-							<Anchor point="TOP" relativeTo="$parentEditBox2" relativePoint="BOTTOM">
+							<Anchor point="TOP" relativeTo="SmokeyLootEditEntryFrameEditBox2" relativePoint="BOTTOM">
 								<Offset x="0" y="-5"/>
 							</Anchor>
 						</Anchors>
 					</EditBox>
-					<EditBox name="$parentEditBox4" inherits="SmokeyLootEditBoxTemplate" id="4">
+					<EditBox name="SmokeyLootEditEntryFrameEditBox4" inherits="SmokeyLootEditBoxTemplate" id="4">
 						<Anchors>
-							<Anchor point="TOP" relativeTo="$parentEditBox3" relativePoint="BOTTOM">
+							<Anchor point="TOP" relativeTo="SmokeyLootEditEntryFrameEditBox3" relativePoint="BOTTOM">
 								<Offset x="0" y="-5"/>
 							</Anchor>
 						</Anchors>
 					</EditBox>
-					<EditBox name="$parentEditBox5" inherits="SmokeyLootEditBoxTemplate" id="5" numeric="true">
+					<EditBox name="SmokeyLootEditEntryFrameEditBox5" inherits="SmokeyLootEditBoxTemplate" id="5" numeric="true">
 						<Anchors>
-							<Anchor point="TOP" relativeTo="$parentEditBox4" relativePoint="BOTTOM">
+							<Anchor point="TOP" relativeTo="SmokeyLootEditEntryFrameEditBox4" relativePoint="BOTTOM">
 								<Offset x="0" y="-5"/>
 							</Anchor>
 						</Anchors>
 					</EditBox>
-					<CheckButton name="$parentEnabledCheckBox" inherits="UICheckButtonTemplate">
+					<CheckButton name="SmokeyLootEditEntryFrameEnabledCheckBox" inherits="UICheckButtonTemplate">
 						<Anchors>
-							<Anchor point="TOPLEFT" relativeTo="$parentEditBox5" relativePoint="BOTTOMLEFT">
+							<Anchor point="TOPLEFT" relativeTo="SmokeyLootEditEntryFrameEditBox5" relativePoint="BOTTOMLEFT">
 								<Offset x="-5" y="-5"/>
 							</Anchor>
 						</Anchors>
@@ -478,7 +478,7 @@
 							</OnClick>
 						</Scripts>
 					</CheckButton>
-					<Button name="$parentCancelButton" inherits="UIPanelButtonTemplate" text="CANCEL">
+					<Button name="SmokeyLootEditEntryFrameCancelButton" inherits="UIPanelButtonTemplate" text="CANCEL">
 						<Size x="80" y="22"/>
 						<Anchors>
 							<Anchor point="BOTTOMRIGHT">
@@ -491,10 +491,10 @@
 							</OnClick>
 						</Scripts>
 					</Button>
-					<Button name="$parentAcceptButton" inherits="UIPanelButtonTemplate" text="ACCEPT">
+					<Button name="SmokeyLootEditEntryFrameAcceptButton" inherits="UIPanelButtonTemplate" text="ACCEPT">
 						<Size x="80" y="22"/>
 						<Anchors>
-							<Anchor point="RIGHT" relativeTo="$parentCancelButton" relativePoint="LEFT">
+							<Anchor point="RIGHT" relativeTo="SmokeyLootEditEntryFrameCancelButton" relativePoint="LEFT">
 								<Offset x="-2" y="0"/>
 							</Anchor>
 						</Anchors>
@@ -504,7 +504,7 @@
 							</OnClick>
 						</Scripts>
 					</Button>
-					<Button name="$parentDeleteButton" inherits="UIPanelButtonTemplate" text="DELETE">
+					<Button name="SmokeyLootEditEntryFrameDeleteButton" inherits="UIPanelButtonTemplate" text="DELETE">
 						<Size x="80" y="22"/>
 						<Anchors>
 							<Anchor point="BOTTOMLEFT">
