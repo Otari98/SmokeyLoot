@@ -182,7 +182,7 @@ local InitiatedDBSync = false
 local GotResponse = false
 local Pulling = false
 local Pushing = false
-local PushAfterDBSync = false
+-- local PushAfterDBSync = false
 
 local TargetChangeRegistered = false
 
@@ -1473,10 +1473,10 @@ function SmokeyLoot.OnEvent(event, arg1, arg2, arg3, arg4)
 					printf("Database is updated.")
 
 				end
-				if PushAfterDBSync then
-					PushAfterDBSync = false
-					SmokeyLoot.FinishRaidRoutine()
-				end
+				-- if PushAfterDBSync then
+				-- 	PushAfterDBSync = false
+				-- 	SmokeyLoot.FinishRaidRoutine()
+				-- end
 			elseif string.find(message, "(%d+)=(%d+)=") and SmokeyLoot.IsOfficer(sender) then
 				DBSyncInProgress = true
 				local _, _, index, itemID = string.find(message, "(%d+)=(%d+)=")
@@ -2448,7 +2448,7 @@ function SmokeyLoot.FinishRaidButton_OnClick()
 
 	if SMOKEYLOOT.DATABASE.date < SmokeyLoot.GetRemoteVersion() or DBSyncInProgress then
 		SmokeyLoot.PullDB()
-		PushAfterDBSync = true
+		-- PushAfterDBSync = true
 	else
 		SmokeyLoot.FinishRaidRoutine()
 	end
