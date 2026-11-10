@@ -1,7 +1,7 @@
 <Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.blizzard.com/wow/ui/..\FrameXML\UI.xsd">
 	<Script file="SmokeyLoot.lua"/>
 	<!-- Main Frame -->
-	<Frame name="SmokeyLootFrame" movable="true" parent="UIParent" enableMouse="true" toplevel="true" frameStrata="DIALOG" hidden="true">
+	<Frame name="SmokeyLootFrame" movable="true" parent="UIParent" enableMouse="true" toplevel="true" hidden="true">
 		<Size x="500" y="650"/>
 		<Anchors>
 			<Anchor point="CENTER"/>
@@ -560,7 +560,7 @@
 		</Scripts>
 	</Frame>
 	<!-- Minimap Button -->
-	<Button name="SmokeyLootMinimapButton" movable="true" parent="Minimap" enableMouse="true" toplevel="true" frameStrata="LOW">
+	<Button name="SmokeyLootMinimapButton" movable="true" parent="Minimap" enableMouse="true" toplevel="true">
 		<Size x="33" y="33"/>
 		<Anchors>
 			<Anchor point="CENTER" relativeTo="UIParent" relativePoint="CENTER"/>
@@ -622,7 +622,7 @@
 		</Scripts>
 	</Button>
 	<!-- Loot Popup frame -->
-	<Frame name="SmokeyLootPopupFrame" parent="UIParent" enableMouse="true" toplevel="true" frameStrata="DIALOG" hidden="true" movable="true">
+	<Frame name="SmokeyLootPopupFrame" parent="UIParent" enableMouse="true" toplevel="true" hidden="true" movable="true">
 		<Size x="280" y="84"/>
 		<Anchors>
 			<Anchor point="BOTTOM">
@@ -839,7 +839,7 @@
 		</Scripts>
 	</Frame>
 	<!-- Master loot frame -->
-	<Frame name="SmokeyLootMLFrame" toplevel="true" movable="true" hidden="true" enableMouse="true" parent="UIParent" frameStrata="DIALOG">
+	<Frame name="SmokeyLootMLFrame" toplevel="true" movable="true" hidden="true" enableMouse="true" parent="UIParent">
 		<Size x="358" y="266"/>
 		<Anchors>
 			<Anchor point="CENTER"/>
@@ -1014,7 +1014,7 @@
 		</Scripts>
 	</Frame>
 	<!-- Import frame -->
-	<Frame name="SmokeyLootImportFrame" movable="true" parent="UIParent" enableMouse="true" toplevel="true" frameStrata="DIALOG" hidden="true">
+	<Frame name="SmokeyLootImportFrame" movable="true" parent="UIParent" enableMouse="true" toplevel="true" frameStrata="HIGH" hidden="true">
 		<Size x="420" y="420"/>
 		<Anchors>
 			<Anchor point="CENTER"/>

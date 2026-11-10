@@ -55,14 +55,17 @@
 		<HighlightFont inherits="GameFontHighlight" justifyH="LEFT"/>
 		<DisabledFont inherits="GameFontDisable" justifyH="LEFT"/>
 		<Scripts>
+			<OnLoad>
+				SmokeyLoot.Entry_OnLoad(this)
+			</OnLoad>
 			<OnEnter>
-				SmokeyLoot.Entry_OnEnter()
+				SmokeyLoot.Entry_OnEnter(this)
 			</OnEnter>
 			<OnLeave>
-				SmokeyLoot.Entry_OnLeave()
+				SmokeyLoot.Entry_OnLeave(this)
 			</OnLeave>
 			<OnClick>
-				SmokeyLoot.Entry_OnClick()
+				SmokeyLoot.Entry_OnClick(this)
 			</OnClick>
 		</Scripts>
 	</Button>

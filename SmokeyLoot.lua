@@ -1589,43 +1589,48 @@ function SmokeyLoot.UpdateFrame()
 			entryIndex = i + offset
 		end
 
-		if tableToUpdate[entryIndex] and entryIndex > 0 and entryIndex <= numEntries then
-			local icon = _G["SmokeyLootEntry"..i.."Icon"]
-			local itemColumn = _G["SmokeyLootEntry"..i.."Text"]
-			local charColumn = _G["SmokeyLootEntry"..i.."Column1"]
-			local rankColumn = _G["SmokeyLootEntry"..i.."Column2"]
-			local bonusColumn = _G["SmokeyLootEntry"..i.."Column3"]
-			local itemID = tableToUpdate[entryIndex].itemID
-			local char = tableToUpdate[entryIndex].char
-			local bonus = tableToUpdate[entryIndex].bonus
-			local class = SMOKEYLOOT.GUILD[char] and SMOKEYLOOT.GUILD[char].class
-			local rankName = SMOKEYLOOT.GUILD[char] and SMOKEYLOOT.GUILD[char].rankName
+		local data = tableToUpdate[entryIndex]
+		if data and entryIndex > 0 and entryIndex <= numEntries then
+			local icon = entry.Icon
+			local itemColumn = entry.Text
+			local charColumn = entry.Column1
+			local rankColumn = entry.Column2
+			local bonusColumn = entry.Column3
+			local itemID = data.itemID
+			local char = data.char
+			local bonus = data.bonus
+			local member = SMOKEYLOOT.GUILD[char]
+			local class = member and member.class
+			local rankName = member and member.rankName
 
 			CacheItem(itemID)
 
 			local itemName, itemLink, itemQuality, itemLevel, itemType, itemSubType, itemCount, itemEquipLoc, itemTexture = GetItemInfo(itemID)
-			local r, g, b = 1, 0.2, 0.2
+			local r, g, b = RED_FONT_COLOR.r, RED_FONT_COLOR.g, RED_FONT_COLOR.b
 
 			if itemQuality then
 				r, g, b = GetItemQualityColor(itemQuality)
 			end
 
-			itemColumn:SetText(itemName or "")
+			itemColumn:SetText(itemID == 0 and "" or itemName or "???")
 			itemColumn:SetTextColor(r, g, b)
 			itemColumn:SetWidth(char and 200 or 0)
 			charColumn:SetText(char)
-			icon:SetTexture(itemTexture or "")
+			icon:SetTexture(itemID == 0 and "" or itemTexture or "Interface\\Icons\\INV_Misc_QuestionMark")
 			icon:Show()
 
-			if class and rankName and RAID_CLASS_COLORS[class] then
-				charColumn:SetTextColor(RAID_CLASS_COLORS[class].r, RAID_CLASS_COLORS[class].g, RAID_CLASS_COLORS[class].b)
+			if class and rankName then
+				local color = RAID_CLASS_COLORS[class]
+				if color then
+					charColumn:SetTextColor(color.r, color.g, color.b)
+				end
 				if IsBongoAlt(char) then
 					rankColumn:SetText(rankName.."*")
 				else
 					rankColumn:SetText(rankName)
 				end
 			else
-				charColumn:SetTextColor(1, 0.2, 0.2)
+				charColumn:SetTextColor(RED_FONT_COLOR.r, RED_FONT_COLOR.g, RED_FONT_COLOR.b)
 				rankColumn:SetText()
 			end
 
@@ -1639,7 +1644,7 @@ function SmokeyLoot.UpdateFrame()
 				end
 			end
 
-			entry.data = tableToUpdate[entryIndex]
+			entry.data = data
 			entry.data.class = class
 			entry:SetID(entryIndex)
 			entry:Show()
@@ -1650,8 +1655,7 @@ function SmokeyLoot.UpdateFrame()
 			end
 
 			if tableToUpdate == SMOKEYLOOT.RAID then
-				local enabled = tableToUpdate[entryIndex].enabled
-				entry:SetAlpha(enabled and 1 or 0.5)
+				entry:SetAlpha(data.enabled and 1 or 0.5)
 			else
 				entry:SetAlpha(1)
 			end
@@ -1678,71 +1682,100 @@ function SmokeyLoot.UpdateFrame()
 	SmokeyLoot.EnableRaidControls()
 end
 
+function SmokeyLoot.GetColoredGuildMemberName(member)
+	if not member then return "" end
+	local gInfo = SMOKEYLOOT.GUILD[member]
+	if gInfo and gInfo.class then
+		return ClassColors[gInfo.class]..member.."|r"
+	end
+	return RED_FONT_COLOR_CODE..member.."|r"
+end
+
+function SmokeyLoot.Entry_OnLoad(self)
+	local name = self:GetName()
+	self.Icon = _G[name.."Icon"]
+	self.Text = _G[name.."Text"]
+	self.Column1 = _G[name.."Column1"]
+	self.Column2 = _G[name.."Column2"]
+	self.Column3 = _G[name.."Column3"]
+end
+
 local EntryTooltip = CreateFrame("GameTooltip", "SmokeyLootEntryTooltip", UIParent, "GameTooltipTemplate")
 
-function SmokeyLoot.Entry_OnEnter()
-	this:SetBackdropColor(1, 1, 1, 0.5)
+function SmokeyLoot.Entry_OnEnter(self)
+	self:SetBackdropColor(1, 1, 1, 0.5)
 
-	if not this.data then
-		return
-	end
+	local data = self.data
+	if not data then return end
 
-	GameTooltip:SetOwner(this, "ANCHOR_NONE")
-	EntryTooltip:SetOwner(this, "ANCHOR_NONE")
+	local itemID = data.itemID
+
+	GameTooltip:SetOwner(self, "ANCHOR_NONE")
+	EntryTooltip:SetOwner(self, "ANCHOR_NONE")
 
 	if CurrentTab == "HR" then
-		if this.data.itemID > 0 then
-			GameTooltip:SetHyperlink("item:"..this.data.itemID)
+		if itemID > 0 then
+			GameTooltip:SetHyperlink("item:"..itemID)
 		end
 
-		local str = "Hard reserve queue:\n"
-
-		for k, v in ipairs(this.data) do
-			str = str..k..". "
-			for k2, v2 in ipairs(v) do
-				if SMOKEYLOOT.GUILD[v2] and SMOKEYLOOT.GUILD[v2].class then
-					str = str..ClassColors[SMOKEYLOOT.GUILD[v2].class]..v2.."|r"
-				else
-					str = str..RED_FONT_COLOR_CODE..v2.."|r"
-				end
-				str = v[k2 + 1] and str..", " or str
+		EntryTooltip:SetText("Hard reserve queue:")
+		for i, players in ipairs(data) do
+			local names = ""
+			for j, member in ipairs(players) do
+				names = names..SmokeyLoot.GetColoredGuildMemberName(member)
+				if players[j + 1] then names = names..", " end
 			end
-			str = str.."\n"
+			EntryTooltip:AddLine(i..". "..names)
 		end
-		EntryTooltip:AddLine(str)
 
 	elseif CurrentTab == "RAID" then
-
-		if this.data.itemID > 0 then
-			GameTooltip:SetHyperlink("item:"..this.data.itemID)
+		if itemID > 0 then
+			GameTooltip:SetHyperlink("item:"..itemID)
+			local itemName, itemLink, itemQuality, itemLevel, itemType, itemSubType, itemCount, itemEquipLoc, itemTexture = GetItemInfo(itemID)
+			self.Text:SetText(itemName or "???")
+			self.Icon:SetTexture(itemTexture or "Interface\\Icons\\INV_Misc_QuestionMark")
+			local r, g, b = 1, 0.2, 0.2
+			if itemQuality then r, g, b = GetItemQualityColor(itemQuality) end
+			self.Text:SetTextColor(r, g, b)
 		end
 
-		local color = this.data.class and ClassColors[this.data.class] or RED_FONT_COLOR_CODE
-		local char = color..this.data.char.." |r"..GRAY_FONT_COLOR_CODE.."(Not in the raid)|r"
+		local color = data.class and ClassColors[data.class] or RED_FONT_COLOR_CODE
+		local char = color..data.char.." |r"..GRAY_FONT_COLOR_CODE.."(Not in the raid)|r"
 
 		for i = 1, 40 do
 			local name, rank, subgroup, level, class, fileName, zone, online, isDead = GetRaidRosterInfo(i)
-			if name and name == this.data.char then
+			if name and name == data.char then
 				color = ClassColors[fileName]
 				if not online then
-					char = color..this.data.char.." |r"..GRAY_FONT_COLOR_CODE.."("..zone..")|r"
+					char = color..data.char.." |r"..GRAY_FONT_COLOR_CODE.."("..zone..")|r"
 				else
-					char = color..this.data.char.."|r"
+					char = color..data.char.."|r"
 				end
 				break
 			end
 		end
 
-		EntryTooltip:AddLine(string.format("%s\nitemID:%d\npluses:%d\ngotHR: %s", char, this.data.itemID, this.data.pluses, this.data.gotHR and table.concat(this.data.gotHR, ", ") or "no"))
+		EntryTooltip:AddLine(char)
+		EntryTooltip:AddLine("ItemID: "..itemID)
+		EntryTooltip:AddLine("Pluses: "..(SMOKEYLOOT.RAID.isPlusOneRaid and data.pluses or NOT_APPLICABLE))
+		if data.gotHR then
+			EntryTooltip:AddLine("Got HR: "..table.concat(data.gotHR, ", "))
+		end
 	
 	elseif CurrentTab == "DATABASE" then
-		if this.data.itemID > 0 then
-			GameTooltip:SetHyperlink("item:"..this.data.itemID)
-			EntryTooltip:AddLine("itemID: "..this.data.itemID)
+		if itemID > 0 then
+			GameTooltip:SetHyperlink("item:"..itemID)
+			EntryTooltip:AddLine("ItemID: "..itemID)
+			local itemName, itemLink, itemQuality, itemLevel, itemType, itemSubType, itemCount, itemEquipLoc, itemTexture = GetItemInfo(itemID)
+			self.Text:SetText(itemName or "???")
+			self.Icon:SetTexture(itemTexture or "Interface\\Icons\\INV_Misc_QuestionMark")
+			local r, g, b = 1, 0.2, 0.2
+			if itemQuality then r, g, b = GetItemQualityColor(itemQuality) end
+			self.Text:SetTextColor(r, g, b)
 		end
 	end
 
-	EntryTooltip:SetPoint("BOTTOMRIGHT", this, "TOPLEFT", -14, 0)
+	EntryTooltip:SetPoint("BOTTOMRIGHT", self, "TOPLEFT", -14, 0)
 	GameTooltip:SetPoint("TOPRIGHT", EntryTooltip, "BOTTOMRIGHT", 0, 0)
 	GameTooltip:Show()
 	EntryTooltip:Show()
@@ -1753,15 +1786,36 @@ function SmokeyLoot.Entry_OnEnter()
 	if (top and bottom) and (top > bottom) then
 		EntryTooltip:ClearAllPoints()
 		GameTooltip:ClearAllPoints()
-		GameTooltip:SetPoint("TOPRIGHT", this, "BOTTOMLEFT", -14, 0)
+		GameTooltip:SetPoint("TOPRIGHT", self, "BOTTOMLEFT", -14, 0)
 		EntryTooltip:SetPoint("BOTTOMRIGHT", GameTooltip, "TOPRIGHT", 0, 0)
 	end
 end
 
-function SmokeyLoot.Entry_OnLeave()
-	this:SetBackdropColor(1, 1, 1, 0.2)
+function SmokeyLoot.Entry_OnLeave(self)
+	self:SetBackdropColor(1, 1, 1, 0.2)
 	GameTooltip:Hide()
 	EntryTooltip:Hide()
+end
+
+function SmokeyLoot.Entry_OnClick(self)
+	if IsShiftKeyDown() then
+		local data = self.data
+		if not data then return end
+		local itemID = data.itemID
+		-- copy paste values
+		if SmokeyLootEditEntryFrame:IsShown() then
+			if itemID then
+				SmokeyLootEditEntryFrameEditBox2:SetNumber(itemID)
+				SmokeyLootEditEntryFrameItemName:SetText(GetItemInfo(itemID) or "")
+			end
+			SmokeyLootEditEntryFrameEditBox3:SetText(data.char)
+			SmokeyLootEditEntryFrameEditBox4:SetText(data.bonus)
+		else
+			SmokeyLoot.ChatInsertItemLink(itemID)
+		end
+	elseif CurrentTab == "DATABASE" or CurrentTab == "RAID" then
+		SmokeyLoot.ToggleEditEntryFrame(self:GetID())
+	end
 end
 
 function SmokeyLoot.ChatInsertItemLink(itemID)
@@ -1777,25 +1831,6 @@ function SmokeyLoot.ChatInsertItemLink(itemID)
 	if itemName and editBox then
 		local r, g, b, color = GetItemQualityColor(quality)
 		editBox:Insert(string.format("%s|H%s|h[%s]|h|r", color, itemString, itemName))
-	end
-end
-
-function SmokeyLoot.Entry_OnClick()
-	if IsShiftKeyDown() then
-		if not this.data then return end
-		-- copy paste values
-		if SmokeyLootEditEntryFrame:IsShown() then
-			if this.data.itemID then
-				SmokeyLootEditEntryFrameEditBox2:SetNumber(this.data.itemID)
-				SmokeyLootEditEntryFrameItemName:SetText(GetItemInfo(this.data.itemID) or "")
-			end
-			SmokeyLootEditEntryFrameEditBox3:SetText(this.data.char)
-			SmokeyLootEditEntryFrameEditBox4:SetText(this.data.bonus)
-		else
-			SmokeyLoot.ChatInsertItemLink(this.data.itemID)
-		end
-	elseif CurrentTab == "DATABASE" or CurrentTab == "RAID" then
-		SmokeyLoot.ToggleEditEntryFrame(this:GetID())
 	end
 end
 
