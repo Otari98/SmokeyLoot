@@ -179,10 +179,8 @@ local Master = nil
 local PullingFrom = nil
 local DBSyncInProgress = false
 local InitiatedDBSync = false
-local GotResponse = false
-local Pulling = false
+local DBSyncInitiator = nil
 local Pushing = false
--- local PushAfterDBSync = false
 
 local TargetChangeRegistered = false
 
@@ -729,19 +727,15 @@ local function QueueFunction(delay, func)
 end
 
 DelayFrame:SetScript("OnUpdate", function()
-	if DelayFrame.dbElapsed and Pulling then
+	if DelayFrame.dbElapsed and PullingFrom then
 		DelayFrame.dbElapsed = DelayFrame.dbElapsed + arg1
 		if DelayFrame.dbElapsed >= DelayFrame.dbTimeout then
 			DelayFrame.dbElapsed = nil
-			Pulling = false
 			PullingFrom = nil
 			InitiatedDBSync = false
-			GotResponse = false
 			DBSyncInProgress = false
 			SmokeyLootFrameProgressBar:Hide()
-			-- if CurrentTab ~= "RAID" then
-				SmokeyLootPullButton:Show()
-			-- end
+			SmokeyLootPullButton:Show()
 			SmokeyLootPullButton:Enable()
 			SmokeyLoot.UpdateFrame()
 			printf("Database transfer aborted - timed out.")
@@ -868,7 +862,9 @@ function SmokeyLoot.OnEvent(event, arg1, arg2, arg3, arg4)
 		GuildRoster()
 
 	elseif event == "GUILD_ROSTER_UPDATE" then
-		-- debugprint(event)
+		-- debugprint(event, arg1)
+		if arg1 then return end
+
 		if not SMOKEYLOOT then SMOKEYLOOT = {} end
 		if not SMOKEYLOOT.GUILD then SMOKEYLOOT.GUILD = {} end
 
@@ -1389,25 +1385,27 @@ function SmokeyLoot.OnEvent(event, arg1, arg2, arg3, arg4)
 
 		elseif channel == "GUILD" and sender ~= UnitName("player") then
 			-- DB sync stuff here
-			if message == "GET_DB_LATEST" and SmokeyLoot.IsOfficer() then
+			if message == "GET_DB_LATEST" and SmokeyLoot.IsOfficer() and not DBSyncInProgress then
 				debugprintf("[%s] %s", sender, message)
-				SendAddonMessage("SmokeyLoot", "VDB_"..SMOKEYLOOT.DATABASE.date, "GUILD")
+				local date = SMOKEYLOOT.DATABASE.date
+				if date == SmokeyLoot.GetRemoteVersion() then
+					DBSyncInitiator = sender
+					SendAddonMessage("SmokeyLoot", "VDB_"..date, "GUILD")
+				end
 				return
 			end
 			if string.find(message, "^VDB_%d+") and SmokeyLoot.IsOfficer(sender) and InitiatedDBSync then
 				debugprintf("[%s] %s", sender, message)
-				GotResponse = true
 				local _, _, date = string.find(message, "^VDB_(%d+)")
 				local remote = SmokeyLoot.GetRemoteVersion()
-				if tonumber(date) == remote and SMOKEYLOOT.DATABASE.date < remote then
+				if tonumber(date) == remote and SMOKEYLOOT.DATABASE.date < remote and not DBSyncInProgress then
 					SendAddonMessage("SmokeyLoot", "PULL_FROM_"..sender, "GUILD")
-					PullingFrom = sender
 				end
 				return
 			end
-			if message == "PULL_FROM_"..UnitName("player") and SmokeyLoot.IsOfficer() then
+			if message == "PULL_FROM_"..UnitName("player") and sender == DBSyncInitiator then
 				debugprintf("[%s] %s", sender, message)
-				SmokeyLoot.PushDB(sender)
+				SmokeyLoot.PushDB()
 				return
 			end
 			if string.find(message, "^start;%d+;%d+") and SmokeyLoot.IsOfficer(sender) then
@@ -1417,15 +1415,15 @@ function SmokeyLoot.OnEvent(event, arg1, arg2, arg3, arg4)
 				local _, _, date, max = string.find(message, "start;(%d+);(%d+)")
 				-- local remote = SmokeyLoot.GetRemoteVersion()
 
-				if not Pulling and tonumber(max) > 0 and (PullingFrom == sender or SMOKEYLOOT.DATABASE.date < tonumber(date)) then
+				if tonumber(max) > 0 and SMOKEYLOOT.DATABASE.date < tonumber(date) then
 					arraywipe(incomingDB)
 					incomingDB.totalEntries = tonumber(max)
 					incomingDB.date = tonumber(date)
 
-					Pulling = true
 					PullingFrom = sender
 					DelayFrame.dbElapsed = 0
 
+					SmokeyLootFinishRaidButton:Disable()
 					SmokeyLootFrameProgressBar:Show()
 					SmokeyLootFrameProgressBar:SetMinMaxValues(0, tonumber(max))
 					SmokeyLootFrameProgressBar:SetValue(0)
@@ -1438,47 +1436,40 @@ function SmokeyLoot.OnEvent(event, arg1, arg2, arg3, arg4)
 			elseif string.find(message, "^end;%d+") and SmokeyLoot.IsOfficer(sender) then
 				debugprintf("[%s] %s", sender, message)
 				DBSyncInProgress = false
+
 				if PullingFrom and PullingFrom == sender then
-					Pulling = false
 					PullingFrom = nil
 					InitiatedDBSync = false
-					GotResponse = false
 					DelayFrame.dbElapsed = nil
 
 					SmokeyLootFrameProgressBar:Hide()
-					-- if CurrentTab ~= "RAID" then
-						SmokeyLootPullButton:Show()
-					-- end
+					SmokeyLootPullButton:Show()
 					SmokeyLootPullButton:Enable()
 
 					local newSize = table.getn(incomingDB)
 					local targetSize = incomingDB.totalEntries
-					if newSize ~= incomingDB.totalEntries then
+					if newSize ~= targetSize then
 						printf("Database transfer aborted - recieved %d entries but needed %d.", newSize, targetSize)
-						return
+					else
+						arraywipe(SMOKEYLOOT.DATABASE)
+						for i = 1, newSize do
+							local value = incomingDB[i]
+							table.insert(SMOKEYLOOT.DATABASE, i, {
+								itemID = value.itemID,
+								char = value.char,
+								bonus = value.bonus,
+							})
+						end
+						SMOKEYLOOT.DATABASE.date = incomingDB.date
+						SmokeyLoot.UpdateHR()
+						printf("Database is updated.")
 					end
-
-					arraywipe(SMOKEYLOOT.DATABASE)
-					for i = 1, newSize do
-						local value = incomingDB[i]
-						table.insert(SMOKEYLOOT.DATABASE, i, {
-							itemID = value.itemID,
-							char = value.char,
-							bonus = value.bonus,
-						})
-					end
-					SMOKEYLOOT.DATABASE.date = incomingDB.date
-					SmokeyLoot.UpdateHR()
 					SmokeyLoot.UpdateFrame()
-					printf("Database is updated.")
-
 				end
-				-- if PushAfterDBSync then
-				-- 	PushAfterDBSync = false
-				-- 	SmokeyLoot.FinishRaidRoutine()
-				-- end
+
 			elseif string.find(message, "(%d+)=(%d+)=") and SmokeyLoot.IsOfficer(sender) then
 				DBSyncInProgress = true
+
 				local _, _, index, itemID = string.find(message, "(%d+)=(%d+)=")
 				if PullingFrom and PullingFrom == sender then
 					index, itemID = tonumber(index), tonumber(itemID)
@@ -1506,6 +1497,7 @@ function SmokeyLoot.OnEvent(event, arg1, arg2, arg3, arg4)
 				end
 			end
 		end
+
 	elseif event == "PLAYER_TARGET_CHANGED" then
 		local targetName = UnitName("target")
 		if not targetName then return end
@@ -2444,14 +2436,11 @@ function SmokeyLoot.FinishRaidRoutine()
 end
 
 function SmokeyLoot.FinishRaidButton_OnClick()
-	if not IsMasterLooter() then return end
+	if not IsMasterLooter() or DBSyncInProgress then return end
 	SmokeyLoot.PullDB()
 	SmokeyLootFinishRaidButton:Disable()
 	QueueFunction(3, function()
-		if SMOKEYLOOT.DATABASE.date < SmokeyLoot.GetRemoteVersion() or DBSyncInProgress then
-			SmokeyLoot.PullDB()
-			-- PushAfterDBSync = true
-		else
+		if SMOKEYLOOT.DATABASE.date == SmokeyLoot.GetRemoteVersion() and not DBSyncInProgress then
 			SmokeyLoot.FinishRaidRoutine()
 		end
 	end)
@@ -2460,11 +2449,10 @@ end
 function SmokeyLoot.PullDB()
 	GuildRoster()
 
-	if Pulling or Pushing or InitiatedDBSync then return end
+	if PullingFrom or Pushing or InitiatedDBSync or DBSyncInProgress then return end
 
 	if SMOKEYLOOT.DATABASE.date < SmokeyLoot.GetRemoteVersion() then
 		InitiatedDBSync = true
-		GotResponse = false
 		PullingFrom = nil
 		SmokeyLootPullButton:Disable()
 		printf("Requesting database...")
@@ -2472,22 +2460,16 @@ function SmokeyLoot.PullDB()
 	end
 
 	QueueFunction(3, function()
-		if SMOKEYLOOT.DATABASE.date < SmokeyLoot.GetRemoteVersion() then
+		if SMOKEYLOOT.DATABASE.date < SmokeyLoot.GetRemoteVersion() and not PullingFrom then
 			InitiatedDBSync = false
-			GotResponse = false
-			PullingFrom = nil
 			SmokeyLootPullButton:Enable()
-			if not GotResponse then
-				printf("Looks like there is no one online who can share the database. :(")
-			else
-				printf("Looks like officers that are online have outdated database. So useless!")
-			end
+			printf("Looks like there is no one online who can share the latest database. :(")
 		end
 	end)
 end
 
-function SmokeyLoot.PushDB(requestedBy)
-	if not SmokeyLoot.IsOfficer() or Pushing or Pulling or DBSyncInProgress or SMOKEYLOOT.DATABASE.date < SmokeyLoot.GetRemoteVersion() then
+function SmokeyLoot.PushDB()
+	if not SmokeyLoot.IsOfficer() or Pushing or PullingFrom or DBSyncInProgress or SMOKEYLOOT.DATABASE.date < SmokeyLoot.GetRemoteVersion() then
 		return
 	end
 
@@ -2511,8 +2493,8 @@ function SmokeyLoot.PushDB(requestedBy)
 	SendAddonMessage("SmokeyLoot", "start;"..SMOKEYLOOT.DATABASE.date..";"..table.getn(SMOKEYLOOT.DATABASE), "GUILD")
 	Pushing = true
 
-	if requestedBy then
-		printf("Sharing database, requested by "..requestedBy..", please, stay online until it's done.")
+	if DBSyncInitiator then
+		printf("Sharing database, requested by "..DBSyncInitiator..", please, stay online until it's done.")
 	end
 
 	local i = 1
@@ -2527,6 +2509,7 @@ function SmokeyLoot.PushDB(requestedBy)
 			dbPushFrame:SetScript("OnUpdate", nil)
 			SendAddonMessage("SmokeyLoot", "end;"..SMOKEYLOOT.DATABASE.date, "GUILD")
 			Pushing = false
+			DBSyncInitiator = nil
 			printf("Database is shared.")
 		end
 	end)
@@ -2607,10 +2590,10 @@ end
 
 function SmokeyLoot.GetRemoteVersion()
 	GuildRoster()
-	local _, _, n, v = string.find(GetGuildInfoText(), "\n(%a*)(%d+)$")
-	v = tonumber(v) or 0
-	n = n or ""
-	return v, date("%d/%m/%y %H:%M:%S", v), n
+	local _, _, name, time = string.find(GetGuildInfoText(), "\n(%a*)(%d+)$")
+	time = tonumber(time) or 0
+	name = name or ""
+	return time, date("%d/%m/%y %H:%M:%S", time), name
 end
 
 function SmokeyLoot.SetRemoteVersion()
@@ -2763,6 +2746,7 @@ function SmokeyLoot.EditEntryFrameAcceptButton_OnClick()
 	local newEnabled = SmokeyLootEditEntryFrameEnabledCheckBox:GetChecked() and true or false
 	
 	if tab == "DATABASE" then
+		if DBSyncInProgress then return end
 		if not isOfficer then
 			SmokeyLootEditEntryFrame:Hide()
 			return
@@ -2835,6 +2819,7 @@ end
 
 function SmokeyLoot.EditEntryFrameDeleteButton_OnClick()
 	if CurrentTab == "DATABASE" and SmokeyLoot.IsOfficer() then
+		if DBSyncInProgress then return end
 		if SMOKEYLOOT.DATABASE.date < SmokeyLoot.GetRemoteVersion() then
 			printf("You need to get latest database first.")
 			return
@@ -2894,26 +2879,25 @@ function SmokeyLoot.AddButton_OnShow()
 end
 
 function SmokeyLoot.EnableRaidControls()
-	if CurrentTab ~= "RAID" then
-		return
-	end
-
 	if table.getn(SMOKEYLOOT.RAID) > 0 and IsMasterLooter() then
 		if not DBSyncInProgress then
 			SmokeyLootFinishRaidButton:Enable()
 		else
 			SmokeyLootFinishRaidButton:Disable()
 		end
-		SmokeyLootAddButton:Enable()
-		SmokeyLootClearButton:Enable()
+		if CurrentTab == "RAID" then
+			SmokeyLootAddButton:Enable()
+			SmokeyLootClearButton:Enable()
+		end
 	else
 		SmokeyLootFinishRaidButton:Disable()
-		SmokeyLootAddButton:Disable()
-
-		if GetNumRaidMembers() == 0 and table.getn(SMOKEYLOOT.RAID) > 0 then
-			SmokeyLootClearButton:Enable()
-		else
-			SmokeyLootClearButton:Disable()
+		if CurrentTab == "RAID" then
+			SmokeyLootAddButton:Disable()
+			if GetNumRaidMembers() == 0 and table.getn(SMOKEYLOOT.RAID) > 0 then
+				SmokeyLootClearButton:Enable()
+			else
+				SmokeyLootClearButton:Disable()
+			end
 		end
 	end
 end
